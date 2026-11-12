@@ -5,6 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const errorHandler = require('./middlewares/errorHandler');
+const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +25,9 @@ app.get('/', (req, res) => {
     status: 'online'
   });
 });
+
+// Mount Routes
+app.use('/api/v1/auth', authRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);
