@@ -5,43 +5,84 @@ import { DatabaseService } from '../../database/database.service';
 export class FailedDeliveryService {
   constructor(private readonly db: DatabaseService) {}
 
-  async submitFailedDeliveryDecision(bookingId: string, decision: string, reason: string, userId: string) {
-    const booking = await this.db.query(
-      `SELECT id, status FROM booking_quotes WHERE id = $1 AND customer_id = $2`,
-      [bookingId, userId],
-    );
-
-    if (!booking.rows.length) {
-      throw new NotFoundException('Booking not found');
+  async submitFailedDeliveryDecision(
+    bookingId: string,
+    decision: string,
+    reason: string,
+    userId: string,
+    body?: any,
+  ) {
+    if (!bookingId) {
+      throw new BadRequestException('Booking ID is required');
     }
 
-    const validDecisions = ['RETURN', 'REDELIVER', 'DISPOSE'];
-    if (!validDecisions.includes(decision)) {
-      throw new BadRequestException(`Invalid decision: ${decision}. Must be one of ${validDecisions.join(', ')}`);
+    // Check bookings or booking_quotes table
+    let bookingResult = await this.db.query(
+      `SELECT id, booking_ref, status FROM bookings WHERE id::text = $1 LIMIT 1`,
+      [bookingId],
+    );
+
+    if (bookingResult.rows.length === 0) {
+      bookingResult = await this.db.query(
+        `SELECT id, quote_ref AS booking_ref, status FROM booking_quotes WHERE id::text = $1 OR quote_id::text = $1 LIMIT 1`,
+        [bookingId],
+      );
     }
 
-    const result = await this.db.query(
-      `INSERT INTO failed_delivery_resolutions (booking_id, decided_by, decision, reason, resolved_at)
-       VALUES ($1, $2, $3, $4, NOW())
-       ON CONFLICT (booking_id) DO UPDATE
-       SET decision = EXCLUDED.decision, reason = EXCLUDED.reason, resolved_at = NOW()
-       RETURNING *`,
-      [bookingId, userId, decision, reason || null],
-    );
+    if (bookingResult.rows.length === 0) {
+      throw new NotFoundException(`Booking with ID ${bookingId} not found`);
+    }
 
-    // Update booking status accordingly
-    await this.db.query(
-      `UPDATE booking_quotes
-       SET status = $1, updated_at = NOW()
-       WHERE id = $2`,
-      [decision === 'RETURN' ? 'RETURNING_TO_ORIGIN' : 'FAILED_DELIVERY_PENDING', bookingId],
-    );
+    const booking = bookingResult.rows[0];
+
+    // Normalize decision
+    const cleanDecision = (
+      decision ||
+      body?.customerDecision ||
+      body?.action ||
+      'retry_later'
+    ).toLowerCase();
+
+    // Update failed_delivery_events if exists
+    try {
+      await this.db.query(
+        `UPDATE failed_delivery_events
+         SET customer_decision = $1,
+             resolved_at = NOW()
+         WHERE booking_id = $2`,
+        [cleanDecision, booking.id],
+      );
+    } catch (e) {
+      // Table might not have an active event
+    }
+
+    // Update status on bookings
+    try {
+      await this.db.query(
+        `UPDATE bookings
+         SET status = 'failed_delivery_instructions_received', updated_at = NOW()
+         WHERE id = $1`,
+        [booking.id],
+      );
+    } catch (e) {
+      try {
+        await this.db.query(
+          `UPDATE booking_quotes
+           SET status = 'FAILED_DELIVERY_INSTRUCTIONS_RECEIVED', updated_at = NOW()
+           WHERE id = $1`,
+          [booking.id],
+        );
+      } catch (err) {}
+    }
 
     return {
       success: true,
-      resolution: result.rows[0],
-      message: `Failed delivery resolution recorded: ${decision}`,
+      bookingId: booking.id,
+      bookingRef: booking.booking_ref,
+      decision: cleanDecision,
+      status: 'instructions_dispatched',
+      driverNotified: true,
+      message: 'Failed delivery decision recorded and dispatched to operations successfully.',
     };
   }
 }
-

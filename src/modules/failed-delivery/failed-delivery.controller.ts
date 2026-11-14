@@ -11,16 +11,17 @@ export class FailedDeliveryController {
   @Post(':bookingId/failed-delivery-decision')
   async submitFailedDeliveryDecision(
     @Param('bookingId') bookingId: string,
-    @Body('decision') decision: string,
-    @Body('reason') reason: string,
+    @Body() body: any,
     @CurrentUser('id') userId: string,
   ) {
+    const decision = body?.decision || body?.customerDecision;
+    const reason = body?.reason || body?.customerNotes || body?.note;
     return this.failedDeliveryService.submitFailedDeliveryDecision(
       bookingId,
       decision,
       reason,
       userId,
+      body,
     );
   }
 }
-
