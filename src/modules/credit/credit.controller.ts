@@ -19,11 +19,15 @@ export class CreditController {
   @UseGuards(JwtAuthGuard)
   @Post('contracts/link')
   async linkMasterContract(
-    @Body('contractId') contractId: string,
-    @Body('customerId') customerId: string,
+    @Body() body: any,
     @CurrentUser('id') userId: string,
   ) {
-    return this.creditService.linkMasterContract(contractId, customerId, userId);
+    const contractRef =
+      body?.contractNumber ||
+      body?.contractRef ||
+      body?.contractId ||
+      body?.code;
+
+    return this.creditService.linkMasterContract(contractRef, body?.customerId, userId);
   }
 }
-
