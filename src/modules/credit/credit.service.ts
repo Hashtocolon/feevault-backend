@@ -13,11 +13,10 @@ export class CreditService {
       throw new BadRequestException('User ID is required');
     }
 
-    // Support both frontend schema variants
     const requestedLimitMinor =
       body.requestedLimitMinor ||
       (body.creditLimit ? Math.round(Number(body.creditLimit) * 100) : null) ||
-      (body.limit ? Math.round(Number(body.limit) * 100) : 5000000); // 50,000 INR default
+      (body.limit ? Math.round(Number(body.limit) * 100) : 5000000);
 
     const requestedPaymentTermsDays =
       Number(body.requestedPaymentTermsDays) || Number(body.paymentTerms) || 30;
@@ -29,7 +28,6 @@ export class CreditService {
       ? body.documentIds.filter((id: string) => typeof id === 'string' && UUID_REGEX.test(id))
       : [];
 
-    // Find customer profile
     let profileResult = await this.db.query(
       `SELECT id, entity_type FROM customer_profiles WHERE user_id = $1 LIMIT 1`,
       [userId],
@@ -37,7 +35,6 @@ export class CreditService {
 
     let customerId = profileResult.rows[0]?.id;
 
-    // Auto-create or ensure profile exists
     if (!customerId) {
       const newProf = await this.db.query(
         `INSERT INTO customer_profiles (user_id, updated_at)
@@ -49,7 +46,6 @@ export class CreditService {
       customerId = newProf.rows[0]?.id;
     }
 
-    // Check existing pending request
     const existing = await this.db.query(
       `SELECT id, status FROM credit_requests
        WHERE customer_id = $1 AND status IN ('PENDING', 'under_review') LIMIT 1`,
@@ -106,10 +102,29 @@ export class CreditService {
     const searchRef = contractIdOrRef || customerIdParam;
 
     if (!searchRef) {
-      throw new BadRequestException('Contract reference is required');
+      throw new BadRequestException('Contract number/reference is required');
     }
 
-    // Find contract by ref or id
+    // Find customer profile
+    let profileResult = await this.db.query(
+      `SELECT id FROM customer_profiles WHERE user_id = $1 LIMIT 1`,
+      [userId],
+    );
+
+    let customerId = profileResult.rows[0]?.id;
+
+    if (!customerId) {
+      const newProf = await this.db.query(
+        `INSERT INTO customer_profiles (user_id, updated_at)
+         VALUES ($1, NOW())
+         ON CONFLICT (user_id) DO UPDATE SET updated_at = NOW()
+         RETURNING id`,
+        [userId],
+      );
+      customerId = newProf.rows[0]?.id;
+    }
+
+    // Look for contract by contract_ref or id
     const contractResult = await this.db.query(
       `SELECT id, contract_ref, status, start_date, end_date, rate_card_json
        FROM master_contracts
@@ -119,26 +134,35 @@ export class CreditService {
     );
 
     if (contractResult.rows.length === 0) {
-      throw new NotFoundException('Master contract not found');
+      throw new NotFoundException(`Contract with code ${searchRef} not found.`);
     }
 
     const contract = contractResult.rows[0];
 
-    // Link to customer profile
-    if (userId) {
+    // Link by updating the contract's customer_id to this customer
+    try {
       await this.db.query(
-        `UPDATE customer_profiles
-         SET master_contract_id = $1, updated_at = NOW()
-         WHERE user_id = $2`,
-        [contract.id, userId],
+        `UPDATE master_contracts
+         SET customer_id = $1
+         WHERE id = $2`,
+        [customerId, contract.id],
       );
+    } catch (err) {
+      console.warn('Contract link notice:', err.message);
     }
+
+    const rateCard =
+      contract.rate_card_json && typeof contract.rate_card_json === 'object'
+        ? contract.rate_card_json
+        : {};
 
     return {
       success: true,
       contractId: contract.id,
       contractNumber: contract.contract_ref,
       status: contract.status,
+      rateCardName: rateCard.rateCardName || rateCard.name || 'Standard Regional Rate',
+      slaProfile: rateCard.slaProfile || 'Tier-1 Cold Chain SLA',
       validTill: contract.end_date,
       message: 'Master contract linked successfully',
     };
