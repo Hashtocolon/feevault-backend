@@ -1,16 +1,46 @@
-# React + Vite
+# FeeVault Admin Panel
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+FeeVault Super Admin & Back-Office Web Dashboard built with React, Vite, and Lucide Icons.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 How to Run the Project
 
-## React Compiler
+### Prerequisites
+Make sure you have **Node.js** (version 18 or higher) installed on your system.
+You can download Node.js from: https://nodejs.org/
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+### Step 1: Extract the Zip file
+Extract `admin-panel.zip` to any folder on your computer.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### Step 2: Open Terminal / Command Prompt
+Open your terminal (PowerShell, CMD, or Terminal on macOS/Linux) and navigate into the `admin-panel` folder:
+```bash
+cd admin-panel
+```
+
+### Step 3: Install Dependencies
+Run the following command to download and install all required packages:
+```bash
+npm install
+```
+
+### Step 4: Start the Development Server
+Run:
+```bash
+npm run dev
+```
+
+### Step 5: Open in Your Browser
+Once the server starts, open your browser and visit:
+👉 **http://localhost:5173**
+
+---
+
+## 🛠 Available Scripts
+
+- `npm run dev` - Starts the local development server at `http://localhost:5173`
+- `npm run build` - Creates an optimized production build in the `dist` folder
+- `npm run preview` - Locally previews the production build

@@ -1,5 +1,8 @@
-// SplashScreen.tsx — FeeVault Parent App
+// SplashScreen.tsx — FeeVault Parent App (clean, static design)
 // Logo image: src/assets/images/feevault.png
+//
+// No animations, no background circles, no new packages.
+// Colors are unchanged from your original file.
 
 import React, { useEffect } from 'react';
 import {
@@ -9,7 +12,6 @@ import {
   StyleSheet,
   StatusBar,
   Platform,
-  Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,8 +20,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
 import { ROUTES } from '../../../constants/routes';
 import { COLORS } from '../../../theme/colors';
-
-const { width: W, height: H } = Dimensions.get('window');
 
 // Shown in the bottom-right corner. Change it per release.
 const APP_VERSION = 'v1.0';
@@ -44,7 +44,7 @@ export default function SplashScreen() {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Base background */}
+      {/* Background – same colors, plain gradient only */}
       <LinearGradient
         colors={['#D9F3FF', '#EEF9FF', '#F7FCFF', '#E9FBF1']}
         locations={[0, 0.35, 0.7, 1]}
@@ -53,51 +53,34 @@ export default function SplashScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Soft glow – top left (sky blue) */}
-      <LinearGradient
-        colors={['rgba(120,220,255,0.55)', 'rgba(120,220,255,0)']}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={styles.glowLeft}
-      />
-
-      {/* Soft glow – bottom right (mint green) */}
-      <LinearGradient
-        colors={['rgba(90,230,160,0)', 'rgba(90,230,160,0.55)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.glowRight}
-      />
-
       <SafeAreaView style={styles.safe}>
-        {/* Top tagline */}
-        <Text style={styles.topLabel}>A SMARTER WAY TO MANAGE SCHOOL FEES</Text>
+        {/* Top tagline with side rules */}
+        <View style={styles.topWrap}>
+          <View style={styles.topRule} />
+          <Text style={styles.topLabel}>A SMARTER WAY TO MANAGE SCHOOL FEES</Text>
+          <View style={styles.topRule} />
+        </View>
 
         {/* Center content */}
         <View style={styles.center}>
-          {/* Logo card */}
-          <View style={styles.logoOuter}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0.95)', 'rgba(220,245,255,0.85)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoCard}
-            >
-              <View style={styles.logoInner}>
-                <Image
-                  source={require('../../../assets/images/feevault.png')}
-                  style={styles.logoCropped}
-                  resizeMode="cover"
-                />
-              </View>
-            </LinearGradient>
-          </View>
+          {/* Logo – full image, no crop, no box */}
+          <Image
+            source={require('../../../assets/images/feevault.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
           {/* Brand name */}
           <Text style={styles.brand}>
             <Text style={styles.brandFee}>Fee</Text>
             <Text style={styles.brandVault}>Vault</Text>
           </Text>
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLineBlue} />
+            <View style={styles.dividerLineGreen} />
+          </View>
 
           {/* Description */}
           <Text style={styles.desc}>
@@ -115,10 +98,13 @@ export default function SplashScreen() {
           </View>
         </View>
 
-        {/* Bottom loader */}
+        {/* Bottom */}
         <View style={styles.bottom}>
-          <Text style={styles.loadingText}>Preparing your FeeVault experience...</Text>
-          <Text style={styles.footer}>SECURE • SIMPLE • SMART</Text>
+          <View style={styles.footerRow}>
+            <View style={styles.footerRule} />
+            <Text style={styles.footer}>SECURE • SIMPLE • SMART</Text>
+            <View style={styles.footerRule} />
+          </View>
         </View>
 
         {/* App version – tiny, bottom-right corner */}
@@ -128,11 +114,8 @@ export default function SplashScreen() {
   );
 }
 
-/* ---------- Logo crop sizing ---------- */
-const CARD = 168;
-const WINDOW_W = 130;
-const WINDOW_H = 122;
-const IMG = 160;
+/* ---------- Logo sizing ---------- */
+const LOGO_SIZE = 190; // full logo, increase/decrease as you like
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.gradientTop },
@@ -145,27 +128,21 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
   },
 
-  /* Background glows */
-  glowLeft: {
-    position: 'absolute',
-    left: -W * 0.35,
-    top: H * 0.12,
-    width: W * 0.9,
-    height: W * 0.9,
-    borderRadius: W,
-  },
-  glowRight: {
-    position: 'absolute',
-    right: -W * 0.35,
-    bottom: H * 0.02,
-    width: W * 1.0,
-    height: W * 1.0,
-    borderRadius: W,
-  },
-
   /* Top label */
-  topLabel: {
+  topWrap: {
     marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topRule: {
+    width: 18,
+    height: 1.5,
+    borderRadius: 1,
+    backgroundColor: COLORS.feeBlue,
+    opacity: 0.4,
+  },
+  topLabel: {
+    marginHorizontal: 10,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2.2,
@@ -179,46 +156,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
     marginTop: -10,
+    paddingBottom: 50, // pushes everything up a little
   },
 
-  /* Logo */
-  logoOuter: {
-    width: CARD,
-    height: CARD,
-    borderRadius: 40,
-    padding: 3,
-    backgroundColor: 'rgba(120,215,255,0.55)',
-    shadowColor: '#35B6FF',
-    shadowOpacity: 0.45,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 14 },
-    elevation: 14,
-  },
-  logoCard: {
-    flex: 1,
-    borderRadius: 37,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.9)',
-  },
-  logoInner: {
-    width: WINDOW_W,
-    height: WINDOW_H,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  logoCropped: {
-    position: 'absolute',
-    width: IMG,
-    height: IMG,
-    left: (WINDOW_W - IMG) / 2 - 1,
-    top: -2,
+  /* Logo – no box */
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
   },
 
   /* Brand */
   brand: {
-    marginTop: 26,
+    marginTop: 6,
     fontSize: 46,
     fontWeight: '900',
     letterSpacing: -1.2,
@@ -226,9 +175,31 @@ const styles = StyleSheet.create({
   brandFee: { color: COLORS.feeBlue },
   brandVault: { color: COLORS.vaultGreen },
 
+  /* Divider under brand: blue + green, matches the two-tone name */
+  divider: {
+    marginTop: 10,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dividerLineBlue: {
+    width: 28,
+    height: 3,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: COLORS.feeBlue,
+  },
+  dividerLineGreen: {
+    width: 28,
+    height: 3,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: COLORS.vaultGreen,
+  },
+
   /* Description */
   desc: {
-    marginTop: 6,
+    marginTop: 4,
     fontSize: 14.5,
     lineHeight: 21,
     color: COLORS.textDark,
@@ -239,20 +210,20 @@ const styles = StyleSheet.create({
 
   /* Pill */
   pill: {
-    marginTop: 26,
+    marginTop: 28,
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 11,
     paddingHorizontal: 20,
     borderRadius: 30,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(160,210,255,0.55)',
+    borderColor: 'rgba(160,210,255,0.8)',
     shadowColor: COLORS.feeBlue,
-    shadowOpacity: 0.25,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
   dotOuter: {
     width: 14,
@@ -278,10 +249,23 @@ const styles = StyleSheet.create({
 
   /* Bottom */
   bottom: { width: '100%', alignItems: 'center', paddingBottom: 6 },
-  loadingText: {
-    fontSize: 12,
+  footerRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  footerRule: {
+    width: 22,
+    height: 1,
+    backgroundColor: COLORS.textMid,
+    opacity: 0.35,
+  },
+  footer: {
+    marginHorizontal: 10,
+    fontSize: 9.5,
+    letterSpacing: 2.4,
+    fontWeight: '800',
     color: COLORS.textMid,
-    fontWeight: '600',
   },
   version: {
     position: 'absolute',
@@ -291,12 +275,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.4,
     color: COLORS.textLight,
-  },
-  footer: {
-    marginTop: 8,
-    fontSize: 9.5,
-    letterSpacing: 2.4,
-    fontWeight: '800',
-    color: COLORS.textMid,
   },
 });

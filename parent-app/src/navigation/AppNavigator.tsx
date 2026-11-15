@@ -7,10 +7,7 @@ import { ROUTES } from '../constants/routes';
 import SplashScreen from '../modules/auth/screens/SplashScreen';
 import LoginScreen from '../modules/auth/screens/LoginScreen';
 import WelcomeCarouselScreen from '../modules/onboarding/screens/WelcomeCarouselScreen';
-import ParentalConsentScreen from '../modules/onboarding/screens/ParentalConsentScreen';
 import KycBankBindingScreen from '../modules/onboarding/screens/KycBankBindingScreen';
-import SecuritySetupScreen from '../modules/onboarding/screens/SecuritySetupScreen';
-import DeviceBoundScreen from '../modules/onboarding/screens/DeviceBoundScreen';
 import AddChildScreen from '../modules/onboarding/screens/AddChildScreen';
 
 // ── STEP 2: Home Dashboard ───────────────────
@@ -88,10 +85,7 @@ export const AppNavigator: React.FC = () => {
         />
         <Stack.Screen name={ROUTES.WELCOME_CAROUSEL} component={WelcomeCarouselScreen} />
         <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
-        <Stack.Screen name={ROUTES.PARENTAL_CONSENT} component={ParentalConsentScreen} />
         <Stack.Screen name={ROUTES.KYC_BANK_BINDING} component={KycBankBindingScreen} />
-        <Stack.Screen name={ROUTES.SECURITY_SETUP} component={SecuritySetupScreen} />
-        <Stack.Screen name={ROUTES.DEVICE_BOUND} component={DeviceBoundScreen} />
         <Stack.Screen name={ROUTES.ADD_CHILD} component={AddChildScreen} />
 
         {/* STEP 2: Home Dashboard */}

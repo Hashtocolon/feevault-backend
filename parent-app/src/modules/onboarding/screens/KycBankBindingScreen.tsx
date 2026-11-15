@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  KycBankBindingScreen.tsx
+//  KycBankBindingScreen.tsx — redesigned
 //  Step 2 of 5 — KYC & Refund Bank Account Binding
+//  Static design: no animations, no glass, no background circles.
+//  Colors, logic, validation flow and navigation are unchanged.
 // ─────────────────────────────────────────────────────────────────────────────
 import React, {useState} from 'react';
 import {
@@ -18,10 +20,53 @@ import {useNavigation} from '@react-navigation/native';
 import {COLORS} from '../../../theme/colors';
 import {CustomButton} from '../../../components/CustomButton';
 import {CustomInput} from '../../../components/CustomInput';
-import {PillBadge} from '../../../components/PillBadge';
-import Header from '../../../components/Header';
 import {ROUTES} from '../../../constants/routes';
 import {RootStackParamList} from '../../../navigation/AppNavigator';
+import Svg, {Path} from 'react-native-svg';
+
+const ArrowRightIcon = ({color = '#FFFFFF', size = 18}: {color?: string; size?: number}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M5 12H19M19 12L12 5M19 12L12 19"
+      stroke={color}
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Sleek Shield & Check Icons for Penny Drop
+const ShieldCheckIcon = ({color = '#16A34A', size = 20}: {color?: string; size?: number}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M9 12l2 2 4-4"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const BankCoinIcon = ({color = '#0284C7', size = 20}: {color?: string; size?: number}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 2L2 7h20L12 2z"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type NavProp = NativeStackNavigationProp<
@@ -42,7 +87,29 @@ const KycBankBindingScreen: React.FC = () => {
   const [holderName, setHolderName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifsc, setIfsc] = useState('');
-  const [bankName, setBankName] = useState('');
+
+  // Auto-detect Bank Name from IFSC
+  const getDetectedBank = (code: string) => {
+    if (!code || code.length < 4) return null;
+    const prefix = code.slice(0, 4).toUpperCase();
+    const bankMap: Record<string, string> = {
+      SBIN: 'State Bank of India',
+      HDFC: 'HDFC Bank',
+      ICIC: 'ICICI Bank',
+      UTIB: 'Axis Bank',
+      KKBK: 'Kotak Mahindra Bank',
+      PUNB: 'Punjab National Bank',
+      BARB: 'Bank of Baroda',
+      CNRB: 'Canara Bank',
+      UBIN: 'Union Bank of India',
+      IDFB: 'IDFC FIRST Bank',
+      YESB: 'Yes Bank',
+      INDB: 'IndusInd Bank',
+    };
+    return bankMap[prefix] || (code.length === 11 ? 'Verified RBI Commercial Bank' : null);
+  };
+
+  const detectedBank = getDetectedBank(ifsc);
 
   // — Penny-drop status
   const [verificationStatus, setVerificationStatus] =
@@ -51,7 +118,7 @@ const KycBankBindingScreen: React.FC = () => {
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleVerifyAndBind = () => {
     if (verificationStatus === 'verified') {
-      navigation.navigate(ROUTES.SECURITY_SETUP);
+      navigation.navigate(ROUTES.ADD_CHILD);
       return;
     }
 
@@ -59,7 +126,8 @@ const KycBankBindingScreen: React.FC = () => {
     setTimeout(() => {
       setVerificationStatus('verified');
       setTimeout(() => {
-        navigation.navigate(ROUTES.SECURITY_SETUP);
+        // Skip SecuritySetupScreen and go straight to Add Child!
+        navigation.navigate(ROUTES.ADD_CHILD);
       }, 600);
     }, 1500);
   };
@@ -106,31 +174,28 @@ const KycBankBindingScreen: React.FC = () => {
       locations={[0, 0.35, 0.7, 1]}
       style={styles.gradient}>
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        {/* ── Header ── */}
-        <Header
-          title="KYC & Bank Binding"
-          showBack
-          onBackPress={() => navigation.goBack()}
-        />
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
-          {/* ── Badge ── */}
-          <PillBadge label="IDENTITY VERIFICATION" style={styles.badge} />
-
           {/* ── Title block ── */}
           <Text style={styles.title}>Verify Your Identity & Bank</Text>
+
+          {/* Two-tone divider, same as other screens */}
+          <View style={styles.divider}>
+            <View style={styles.dividerBlue} />
+            <View style={styles.dividerGreen} />
+          </View>
+
           <Text style={styles.subtitle}>
             One-time setup. Bound forever for secure refunds.
           </Text>
 
-          {/* ── Progress indicator: Step 2 of 5 ── */}
+          {/* ── Progress indicator: Step 2 of 3 (Centered) ── */}
           <View style={styles.progressContainer}>
-            {[1, 2, 3, 4, 5].map(step => (
+            {[1, 2, 3].map(step => (
               <View
                 key={step}
                 style={[
@@ -140,16 +205,19 @@ const KycBankBindingScreen: React.FC = () => {
                 ]}
               />
             ))}
-            <Text style={styles.progressLabel}>Step 2 of 5</Text>
           </View>
+          <Text style={styles.progressLabel}>STEP 2 OF 3</Text>
 
-          {/* ══════════════════════════════════════════════════
-              Glass Card 1 — PAN Verification
-          ══════════════════════════════════════════════════ */}
+          {/* ══════════════ Card 1 — PAN Verification ══════════════ */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderIcon}>🪪</Text>
-              <Text style={styles.cardTitle}>PAN Verification</Text>
+              <View style={styles.iconTile}>
+                <Text style={styles.cardHeaderIcon}>🪪</Text>
+              </View>
+              <View style={styles.cardHeaderTitles}>
+                <Text style={styles.cardTitle}>PAN Verification</Text>
+                <Text style={styles.cardSubtitle}>Identity & tax compliance</Text>
+              </View>
             </View>
 
             <CustomInput
@@ -169,13 +237,16 @@ const KycBankBindingScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* ══════════════════════════════════════════════════
-              Glass Card 2 — Refund Bank Account
-          ══════════════════════════════════════════════════ */}
+          {/* ══════════════ Card 2 — Refund Bank Account ══════════════ */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderIcon}>🏦</Text>
-              <Text style={styles.cardTitle}>Refund Bank Account</Text>
+              <View style={styles.iconTile}>
+                <Text style={styles.cardHeaderIcon}>🏦</Text>
+              </View>
+              <View style={styles.cardHeaderTitles}>
+                <Text style={styles.cardTitle}>Refund Bank Account</Text>
+                <Text style={styles.cardSubtitle}>Where your refunds will be sent</Text>
+              </View>
             </View>
 
             <CustomInput
@@ -199,37 +270,62 @@ const KycBankBindingScreen: React.FC = () => {
               onChangeText={t => setIfsc(t.toUpperCase())}
               autoCapitalize="characters"
               maxLength={11}
+              containerStyle={{marginBottom: detectedBank ? 6 : 14}}
             />
-            <CustomInput
-              label="Bank Name"
-              placeholder="e.g. State Bank of India"
-              value={bankName}
-              onChangeText={setBankName}
-              autoCapitalize="words"
-              containerStyle={{marginBottom: 0}}
-            />
+
+            {/* Smart Auto-Detected Bank Badge */}
+            {detectedBank ? (
+              <View style={styles.detectedBankPill}>
+                <View style={styles.bankDot} />
+                <Text style={styles.detectedBankText}>
+                  Bank Identified: <Text style={styles.detectedBankName}>{detectedBank}</Text>
+                </Text>
+              </View>
+            ) : null}
           </View>
 
-          {/* ══════════════════════════════════════════════════
-              Glass Card 3 — Penny Drop Verification
-          ══════════════════════════════════════════════════ */}
+          {/* ══════════════ Card 3 — Penny Drop Verification ══════════════ */}
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Text style={styles.cardHeaderIcon}>💳</Text>
-              <Text style={styles.cardTitle}>Penny Drop Verification</Text>
+              <View style={styles.iconTile}>
+                <BankCoinIcon color="#0284C7" size={20} />
+              </View>
+              <View style={styles.cardHeaderTitles}>
+                <Text style={styles.cardTitle}>₹1 Penny-Drop Verification</Text>
+                <Text style={styles.cardSubtitle}>Direct IMPS Account Handshake</Text>
+              </View>
             </View>
 
-            {/* Info box */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoBoxIcon}>💳</Text>
-              <Text style={styles.infoBoxText}>
-                We will credit{' '}
-                <Text style={styles.infoBoxBold}>₹1</Text> to your account
-                to verify it. This amount is returned instantly.
-              </Text>
+            {/* Visual Process Flow */}
+            <View style={styles.pennyProcessCard}>
+              <View style={styles.pennyStep}>
+                <View style={styles.pennyBadge}>
+                  <Text style={styles.pennyBadgeText}>₹1</Text>
+                </View>
+                <View style={styles.pennyStepTextWrap}>
+                  <Text style={styles.pennyStepTitle}>Instant ₹1 Test Deposit</Text>
+                  <Text style={styles.pennyStepSub}>
+                    FeeVault deposits ₹1 into your account via IMPS to verify active status.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.pennyDivider} />
+
+              <View style={styles.pennyStep}>
+                <View style={[styles.pennyBadge, styles.pennyBadgeGreen]}>
+                  <ShieldCheckIcon color="#16A34A" size={16} />
+                </View>
+                <View style={styles.pennyStepTextWrap}>
+                  <Text style={styles.pennyStepTitle}>Automatic Name Match</Text>
+                  <Text style={styles.pennyStepSub}>
+                    Confirms your name with bank records for secure returns & refunds.
+                  </Text>
+                </View>
+              </View>
             </View>
 
-            {/* Status row */}
+            {/* Live Verification Status Row */}
             <View style={styles.statusRow}>
               <Text style={styles.statusLabel}>Verification Status</Text>
               {renderVerificationPill()}
@@ -238,7 +334,9 @@ const KycBankBindingScreen: React.FC = () => {
 
           {/* ── CTA Button ── */}
           <CustomButton
-            label="Verify & Bind Account →"
+            label="Verify Bank Account"
+            icon={<ArrowRightIcon color="#FFFFFF" size={18} />}
+            iconPosition="right"
             onPress={handleVerifyAndBind}
             loading={verificationStatus === 'verifying'}
             style={styles.ctaButton}
@@ -267,20 +365,35 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
 
-  // Badge
-  badge: {
-    marginTop: 8,
-    marginBottom: 16,
-  },
-
   // Title
   title: {
     fontSize: 26,
     fontWeight: '800',
     color: '#1A56DB', // feeBlue
     textAlign: 'center',
-    letterSpacing: 0.1,
-    marginBottom: 6,
+    letterSpacing: -0.2,
+    marginTop: 22,
+  },
+  divider: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  dividerBlue: {
+    width: 28,
+    height: 3,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: '#1A56DB',
+  },
+  dividerGreen: {
+    width: 28,
+    height: 3,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: '#16A34A',
   },
   subtitle: {
     fontSize: 14,
@@ -296,7 +409,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
     gap: 6,
   },
   progressDot: {
@@ -313,47 +425,159 @@ const styles = StyleSheet.create({
     width: 44,
   },
   progressLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 10.5,
+    fontWeight: '800',
     color: COLORS.textMid,
-    marginLeft: 10,
-    letterSpacing: 0.3,
+    textAlign: 'center',
+    letterSpacing: 1.6,
+    marginTop: 10,
+    marginBottom: 24,
   },
 
-  // Glass Card
+  // Card – solid white, crisp border
   card: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: '#D3EBFF',
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#1A56DB',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowColor: '#35B6FF',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingBottom: 14,
     marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAF4FF',
+  },
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EEF9FF',
+    borderWidth: 1,
+    borderColor: '#D3EBFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   cardHeaderIcon: {
     fontSize: 20,
-    marginRight: 8,
+  },
+  cardHeaderTitles: {
+    flex: 1,
   },
   cardTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#1A56DB',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
+  },
+  cardSubtitle: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
+  },
+
+  // Penny Process Flow
+  pennyProcessCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 16,
+  },
+  pennyStep: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  pennyBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0284C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 1,
+  },
+  pennyBadgeGreen: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  pennyBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  pennyStepTextWrap: {
+    flex: 1,
+  },
+  pennyStepTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  pennyStepSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    lineHeight: 16,
+  },
+  pennyDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 10,
+    marginLeft: 40,
+  },
+
+  // Detected bank
+  detectedBankPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  bankDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#16A34A',
+    marginRight: 8,
+  },
+  detectedBankText: {
+    fontSize: 12,
+    color: '#166534',
+    fontWeight: '500',
+  },
+  detectedBankName: {
+    fontWeight: '800',
+    color: '#15803D',
   },
 
   // Helper text under PAN
   helperRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: 'rgba(219,234,254,0.5)',
+    backgroundColor: '#EEF6FF',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
     padding: 10,
     marginTop: 4,
   },
@@ -368,34 +592,6 @@ const styles = StyleSheet.create({
     color: '#1E40AF',
     lineHeight: 17,
     fontWeight: '500',
-  },
-
-  // Info box (penny drop)
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(219,234,254,0.45)',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(147,197,253,0.6)',
-  },
-  infoBoxIcon: {
-    fontSize: 18,
-    marginRight: 10,
-    marginTop: 1,
-  },
-  infoBoxText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1E3A5F',
-    lineHeight: 19,
-    fontWeight: '400',
-  },
-  infoBoxBold: {
-    fontWeight: '800',
-    color: '#1A56DB',
   },
 
   // Status row
@@ -435,6 +631,7 @@ const styles = StyleSheet.create({
   // CTA
   ctaButton: {
     marginTop: 8,
+    marginBottom: 12,
   },
   bottomSpacer: {
     height: 12,

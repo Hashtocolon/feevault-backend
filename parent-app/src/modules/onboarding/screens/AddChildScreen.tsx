@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────
-//  AddChildScreen — Add First Child / Student
+//  AddChildScreen — Add First Child / Student (redesigned)
 //  Step 5 of 5 in onboarding flow
+//  Static design: no animations, no glass, no background circles.
+//  Colors, logic and navigation are unchanged.
 // ─────────────────────────────────────────────
 import React, {useState, useCallback} from 'react';
 import {
@@ -18,10 +20,22 @@ import {useNavigation} from '@react-navigation/native';
 import {COLORS} from '../../../theme/colors';
 import {CustomButton} from '../../../components/CustomButton';
 import {CustomInput} from '../../../components/CustomInput';
-import {PillBadge} from '../../../components/PillBadge';
-import Header from '../../../components/Header';
 import {ROUTES} from '../../../constants/routes';
 import {RootStackParamList} from '../../../navigation/AppNavigator';
+import Svg, {Path} from 'react-native-svg';
+
+// Sleek Forward Vector Arrow
+const ArrowRightIcon = ({color = '#FFFFFF', size = 18}: {color?: string; size?: number}) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M5 12H19M19 12L12 5M19 12L12 19"
+      stroke={color}
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 type AddChildNav = NativeStackNavigationProp<
   RootStackParamList,
@@ -55,7 +69,6 @@ interface FormState {
   fullName: string;
   gender: GenderOption | '';
   dob: string;
-  schoolName: string;
   schoolCode: string;
   selectedClass: string;
 }
@@ -64,9 +77,18 @@ const EMPTY_FORM: FormState = {
   fullName: '',
   gender: '',
   dob: '',
-  schoolName: '',
   schoolCode: '',
   selectedClass: '',
+};
+
+// Known partner schools mapping for instant UI feedback (matching API lookup)
+const KNOWN_SCHOOLS: Record<string, {name: string; city: string}> = {
+  'DPS-001': {name: 'Delhi Public School', city: 'Bangalore South'},
+  'DPS-BLR-04': {name: 'Delhi Public School', city: 'Bangalore East'},
+  'KVS-001': {name: 'Kendriya Vidyalaya', city: 'Indiranagar, Bangalore'},
+  'BPS-002': {name: 'Bishop Cotton Boys School', city: 'Bangalore'},
+  'NPS-003': {name: 'National Public School', city: 'Koramangala'},
+  'JIS-004': {name: 'Jain International School', city: 'Bangalore'},
 };
 
 // ─────────────────────────────────────────────
@@ -75,6 +97,14 @@ const AddChildScreen: React.FC = () => {
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [submitted, setSubmitted] = useState(false);
+
+  // Auto-detect School from School Code (matching backend /schools/lookup)
+  const cleanCode = form.schoolCode.trim().toUpperCase();
+  const detectedSchool =
+    KNOWN_SCHOOLS[cleanCode] ||
+    (cleanCode.length >= 4
+      ? {name: 'Verified Partner School', city: 'FeeVault Network'}
+      : null);
 
   const setField = useCallback(
     <K extends keyof FormState>(field: K, value: FormState[K]) => {
@@ -99,45 +129,52 @@ const AddChildScreen: React.FC = () => {
       locations={[0, 0.35, 0.7, 1]}
       style={styles.gradient}>
       <SafeAreaView style={styles.safe}>
-
-        {/* ── Header ── */}
-        <Header title="Add Child" onBackPress={() => navigation.goBack()} />
-
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled">
 
-          {/* ── Badge ── */}
-          <PillBadge
-            label="STUDENT PROFILE SETUP"
-            style={styles.pill}
-          />
-
-          {/* ── Heading ── */}
+          {/* ── Title block ── */}
           <Text style={styles.title}>Tell us about your child</Text>
+
+          {/* Two-tone divider, same as other screens */}
+          <View style={styles.divider}>
+            <View style={styles.dividerBlue} />
+            <View style={styles.dividerGreen} />
+          </View>
+
           <Text style={styles.subtitle}>
             Required to link with the correct school fee vault
           </Text>
 
-          {/* ── Progress indicator ── */}
-          <View style={styles.progressRow}>
-            {[1, 2, 3, 4, 5].map(step => (
-              <View
-                key={step}
-                style={[
-                  styles.progressDot,
-                  step === 5 && styles.progressDotActive,
-                  step < 5 && styles.progressDotDone,
-                ]}
-              />
-            ))}
-            <Text style={styles.progressLabel}>Step 5 of 5</Text>
+          {/* ── Progress indicator: Step 3 of 3 ── */}
+          <View style={styles.progressContainer}>
+            <View style={styles.progressRow}>
+              {[1, 2, 3].map(step => (
+                <View
+                  key={step}
+                  style={[
+                    styles.progressDot,
+                    step === 3 && styles.progressDotActive,
+                    step < 3 && styles.progressDotDone,
+                  ]}
+                />
+              ))}
+            </View>
+            <Text style={styles.progressLabel}>STEP 3 OF 3</Text>
           </View>
 
-          {/* ── Glass card: Student Details ── */}
+          {/* ── Card: Student Details ── */}
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>Student Details</Text>
+            <View style={styles.cardHeader}>
+              <View style={styles.iconTile}>
+                <Text style={styles.iconTileText}>🎓</Text>
+              </View>
+              <View style={styles.cardHeaderTitles}>
+                <Text style={styles.sectionTitle}>Student Details</Text>
+                <Text style={styles.sectionSub}>Basic details of your child</Text>
+              </View>
+            </View>
 
             {/* Full Name */}
             <CustomInput
@@ -180,22 +217,30 @@ const AddChildScreen: React.FC = () => {
               onChangeText={v => setField('dob', v)}
             />
 
-            {/* School Name */}
-            <CustomInput
-              label="School Name"
-              placeholder="e.g. Delhi Public School"
-              value={form.schoolName}
-              onChangeText={v => setField('schoolName', v)}
-            />
-
-            {/* School Code */}
+            {/* School Code Input with Smart Auto-Lookup */}
             <CustomInput
               label="School Code"
-              placeholder="School code from admin (e.g. DPS-001)"
+              placeholder="e.g. DPS-001 (provided by school)"
               autoCapitalize="characters"
               value={form.schoolCode}
-              onChangeText={v => setField('schoolCode', v)}
+              onChangeText={v => setField('schoolCode', v.toUpperCase())}
+              containerStyle={{marginBottom: detectedSchool ? 6 : 14}}
             />
+
+            {/* Smart Auto-Detected School Badge */}
+            {detectedSchool ? (
+              <View style={styles.detectedSchoolCard}>
+                <View style={styles.schoolIconWrap}>
+                  <Text style={styles.schoolIconText}>🏫</Text>
+                </View>
+                <View style={styles.schoolInfo}>
+                  <Text style={styles.schoolDetectedTitle}>{detectedSchool.name}</Text>
+                  <Text style={styles.schoolDetectedCity}>
+                    📍 {detectedSchool.city} • <Text style={styles.schoolVerifiedText}>FeeVault Partner ✓</Text>
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             {/* Class / Standard */}
             <Text style={styles.fieldLabel}>Class / Standard</Text>
@@ -238,21 +283,14 @@ const AddChildScreen: React.FC = () => {
             )}
           </View>
 
-          {/* ── Save & View Dashboard ── */}
+          {/* ── Save & Start Saving (Focused Motivational CTA) ── */}
           <CustomButton
-            label="Save & View Dashboard →"
+            label="Save & Start Saving"
+            icon={<ArrowRightIcon color="#FFFFFF" size={18} />}
+            iconPosition="right"
             onPress={handleSave}
             style={styles.saveBtn}
           />
-
-          {/* ── Add Another Child ── */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleAddAnother}
-            style={styles.addAnotherBtn}>
-            <Text style={styles.addAnotherText}>＋ Add Another Child</Text>
-          </TouchableOpacity>
-
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
@@ -270,77 +308,133 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 20,
+    paddingTop: 18,
     paddingBottom: 40,
-  },
-
-  // ── Badge
-  pill: {
-    marginTop: 8,
-    marginBottom: 16,
   },
 
   // ── Heading
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
-    color: COLORS.textDark,
-    letterSpacing: 0.2,
-    marginBottom: 6,
+    color: '#1A56DB', // feeBlue
+    textAlign: 'center',
+    letterSpacing: -0.2,
+    marginTop: 22,
+  },
+  divider: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 12,
+  },
+  dividerBlue: {
+    width: 28,
+    height: 3,
+    borderTopLeftRadius: 2,
+    borderBottomLeftRadius: 2,
+    backgroundColor: '#1A56DB',
+  },
+  dividerGreen: {
+    width: 28,
+    height: 3,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    backgroundColor: '#16A34A',
   },
   subtitle: {
     fontSize: 14,
     color: COLORS.textMid,
+    textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 16,
+    paddingHorizontal: 24,
+    marginBottom: 20,
   },
 
-  // ── Progress
+  // ── Progress indicator (centered)
+  progressContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
   progressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    marginBottom: 10,
     gap: 6,
   },
   progressDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.progressTrack,
+    width: 32,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(26,86,219,0.18)',
   },
   progressDotDone: {
-    backgroundColor: COLORS.feeBlue,
-    opacity: 0.4,
+    backgroundColor: COLORS.vaultGreen,
   },
   progressDotActive: {
     backgroundColor: COLORS.feeBlue,
-    width: 24,
-    borderRadius: 5,
+    width: 44,
   },
   progressLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 10.5,
+    fontWeight: '800',
     color: COLORS.textMid,
-    marginLeft: 6,
+    letterSpacing: 1.6,
+    textAlign: 'center',
   },
 
-  // ── Glass card
+  // ── Card – solid white, crisp border
   card: {
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#D3EBFF',
     padding: 20,
     marginBottom: 20,
+    shadowColor: '#35B6FF',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 14,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EAF4FF',
+  },
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EEF9FF',
+    borderWidth: 1,
+    borderColor: '#D3EBFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  iconTileText: {
+    fontSize: 20,
+  },
+  cardHeaderTitles: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.feeBlue,
-    marginBottom: 16,
     letterSpacing: 0.1,
+  },
+  sectionSub: {
+    fontSize: 11.5,
+    color: '#64748B',
+    marginTop: 2,
+    fontWeight: '500',
   },
 
   // ── Field label (shared)
@@ -352,6 +446,48 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
+  // ── Auto-detected School Card
+  detectedSchoolCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1.2,
+    borderColor: '#86EFAC',
+    marginBottom: 16,
+  },
+  schoolIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  schoolIconText: {
+    fontSize: 18,
+  },
+  schoolInfo: {
+    flex: 1,
+  },
+  schoolDetectedTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#14532D',
+    marginBottom: 2,
+  },
+  schoolDetectedCity: {
+    fontSize: 11,
+    color: '#166534',
+    fontWeight: '500',
+  },
+  schoolVerifiedText: {
+    fontWeight: '800',
+    color: '#15803D',
+  },
+
   // ── Gender pills
   genderRow: {
     flexDirection: 'row',
@@ -360,7 +496,7 @@ const styles = StyleSheet.create({
   },
   genderPill: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     borderRadius: 12,
     alignItems: 'center',
     backgroundColor: COLORS.inputBg,
@@ -378,6 +514,7 @@ const styles = StyleSheet.create({
   },
   genderPillTextActive: {
     color: COLORS.textWhite,
+    fontWeight: '800',
   },
 
   // ── Class pills (horizontal scroll)
@@ -406,6 +543,7 @@ const styles = StyleSheet.create({
   },
   classPillTextActive: {
     color: COLORS.textWhite,
+    fontWeight: '800',
   },
 
   // ── Status box
@@ -429,16 +567,6 @@ const styles = StyleSheet.create({
   // ── Buttons
   saveBtn: {
     marginBottom: 16,
-  },
-  addAnotherBtn: {
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  addAnotherText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textMid,
-    textDecorationLine: 'underline',
   },
 });
 

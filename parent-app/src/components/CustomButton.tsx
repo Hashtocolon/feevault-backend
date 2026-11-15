@@ -6,6 +6,7 @@ import React from 'react';
 import {
   TouchableOpacity,
   Text,
+  View,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
@@ -21,6 +22,8 @@ interface CustomButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
+  iconPosition?: 'left' | 'right';
 }
 
 export const CustomButton: React.FC<CustomButtonProps> = ({
@@ -31,6 +34,8 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  icon,
+  iconPosition = 'right',
 }) => {
   const isPrimary = variant === 'primary';
   const isOutline = variant === 'outline';
@@ -50,15 +55,19 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
       {loading ? (
         <ActivityIndicator color={isPrimary ? COLORS.textWhite : COLORS.btnPrimary} size="small" />
       ) : (
-        <Text
-          style={[
-            styles.label,
-            isPrimary && styles.labelPrimary,
-            isOutline && styles.labelOutline,
-            textStyle,
-          ]}>
-          {label}
-        </Text>
+        <View style={styles.contentRow}>
+          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
+          <Text
+            style={[
+              styles.label,
+              isPrimary && styles.labelPrimary,
+              isOutline && styles.labelOutline,
+              textStyle,
+            ]}>
+            {label}
+          </Text>
+          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -84,6 +93,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.transparent,
     borderWidth: 1.5,
     borderColor: COLORS.btnPrimary,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLeft: {
+    marginRight: 8,
+  },
+  iconRight: {
+    marginLeft: 8,
   },
   disabled: {
     opacity: 0.5,

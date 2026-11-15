@@ -1,6 +1,8 @@
 // ─────────────────────────────────────────────
-//  FeeVault Parent App — Welcome Carousel Screen
+//  FeeVault Parent App — Welcome Carousel Screen (redesigned)
 //  3 Slides: Locked Savings, Daily Interest, Direct Payout
+//  Static design: no animations, no glass, no background circles.
+//  Colors are unchanged from your original file.
 // ─────────────────────────────────────────────
 
 import React, { useState, useRef } from 'react';
@@ -108,7 +110,7 @@ export const WelcomeCarouselScreen: React.FC = () => {
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Background Gradient */}
+      {/* Background – same gradient, nothing else */}
       <LinearGradient
         colors={['#D9F3FF', '#EEF9FF', '#F7FCFF', '#E9FBF1']}
         locations={[0, 0.35, 0.7, 1]}
@@ -118,13 +120,13 @@ export const WelcomeCarouselScreen: React.FC = () => {
       />
 
       <SafeAreaView style={styles.safe}>
-        {/* Top Header Row */}
+        {/* Top Header Row — Clean Skip Button */}
         <View style={styles.topRow}>
-          <PillBadge label="FEEVAULT SMART ONBOARDING" />
+          <View />
           <TouchableOpacity
             onPress={handleSkip}
             style={styles.skipBtn}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         </View>
@@ -138,21 +140,22 @@ export const WelcomeCarouselScreen: React.FC = () => {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleScroll}
+          getItemLayout={(_, index) => ({
+            length: W,
+            offset: W * index,
+            index,
+          })}
           style={styles.carouselList}
           renderItem={({ item }) => (
             <View style={styles.slide}>
-              {/* Illustration Hero Card */}
+              {/* Hero Card – big square, like the original */}
               <View style={styles.heroCardOuter}>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.95)', 'rgba(224,242,254,0.85)']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.heroCard}>
+                <View style={styles.heroCard}>
                   <Text style={styles.heroEmoji}>{item.emoji}</Text>
                   <View style={styles.heroBadgeRow}>
                     <Text style={styles.heroBadgeText}>{item.pillBadge}</Text>
                   </View>
-                </LinearGradient>
+                </View>
               </View>
 
               {/* Title & Tagline */}
@@ -165,10 +168,12 @@ export const WelcomeCarouselScreen: React.FC = () => {
 
               {/* Feature Benefit Card */}
               <View style={styles.benefitCard}>
-                <View style={styles.benefitDot} />
                 <View style={styles.benefitInfo}>
                   <Text style={styles.benefitTitle}>{item.badgeCardTitle}</Text>
                   <Text style={styles.benefitSub}>{item.badgeCardSubtitle}</Text>
+                </View>
+                <View style={styles.benefitTick}>
+                  <Text style={styles.benefitTickText}>✓</Text>
                 </View>
               </View>
             </View>
@@ -198,9 +203,13 @@ export const WelcomeCarouselScreen: React.FC = () => {
           />
 
           {/* Security Tagline */}
-          <Text style={styles.secureTag}>
-            🔒 RBI-REGULATED ESCROW & BANKING PARTNERS
-          </Text>
+          <View style={styles.secureRow}>
+            <View style={styles.secureRule} />
+            <Text style={styles.secureTag}>
+              🔒 HELD IN SCHEDULED BANK ESCROW ACCOUNT
+            </Text>
+            <View style={styles.secureRule} />
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -216,24 +225,35 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
+
+  /* Header */
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingHorizontal: 22,
+    paddingTop: 18, // Moved down nicely for easy reach & clean spacing
   },
   skipBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    paddingVertical: 7,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(160,210,255,0.8)',
+    shadowColor: '#0757DF',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   skipText: {
     fontSize: 13,
     fontWeight: '700',
     color: COLORS.feeBlue,
   },
+
+  /* Slide */
   carouselList: {
     flex: 1,
   },
@@ -242,44 +262,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
+    paddingTop: 10,
+    marginTop: -28, // Moves the entire hero card and illustration up nicely
   },
+
+  /* Hero card – big square, solid (no glass) */
   heroCardOuter: {
-    width: W * 0.58,
-    height: W * 0.58,
-    borderRadius: 36,
+    width: W * 0.48,
+    height: W * 0.48,
+    borderRadius: 34,
     padding: 3,
-    backgroundColor: 'rgba(120,215,255,0.4)',
+    backgroundColor: '#78D7FF',
     shadowColor: '#35B6FF',
     shadowOpacity: 0.3,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 10,
-    marginBottom: 28,
+    marginBottom: 20, // Reduced space to keep everything comfortably higher
   },
   heroCard: {
     flex: 1,
     borderRadius: 33,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: '#FFFFFF',
   },
   heroEmoji: {
-    fontSize: 72,
+    fontSize: 62,
     marginBottom: 10,
   },
   heroBadgeRow: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: 'rgba(26,86,219,0.12)',
   },
   heroBadgeText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
     color: COLORS.feeBlue,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
   },
+
+  /* Text */
   titleText: {
     fontSize: 26,
     fontWeight: '800',
@@ -296,33 +321,33 @@ const styles = StyleSheet.create({
     color: COLORS.textMid,
     textAlign: 'center',
     lineHeight: 21,
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    marginBottom: 22,
+    paddingHorizontal: 6,
   },
+
+  /* Benefit card – clean solid white with soft border */
   benefitCard: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: 16,
     borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(160,210,255,0.4)',
-  },
-  benefitDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.vaultGreen,
-    marginRight: 12,
+    borderColor: '#D3EBFF',
+    shadowColor: '#0757DF',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   benefitInfo: {
     flex: 1,
   },
   benefitTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: COLORS.textDark,
   },
   benefitSub: {
@@ -330,6 +355,24 @@ const styles = StyleSheet.create({
     color: COLORS.textMid,
     marginTop: 2,
   },
+  benefitTick: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    marginLeft: 10,
+    backgroundColor: '#E9FBF1',
+    borderWidth: 1,
+    borderColor: '#B8E6CD',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  benefitTickText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: COLORS.vaultGreen,
+  },
+
+  /* Bottom */
   bottomSection: {
     paddingHorizontal: 24,
     paddingBottom: 20,
@@ -358,7 +401,18 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 14,
   },
+  secureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  secureRule: {
+    width: 14,
+    height: 1,
+    backgroundColor: COLORS.textLight,
+    opacity: 0.5,
+  },
   secureTag: {
+    marginHorizontal: 8,
     fontSize: 9.5,
     fontWeight: '700',
     letterSpacing: 1.2,
@@ -367,4 +421,3 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeCarouselScreen;
-
