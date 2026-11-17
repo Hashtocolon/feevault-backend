@@ -3,32 +3,87 @@ const jwt = require('jsonwebtoken');
 const db = require('../db');
 const { JWT_SECRET } = require('../middleware/auth');
 
+/**
+ * Normalizes an Indian phone number to standard E.164 (+91XXXXXXXXXX) format
+ * Accepts: "9876543210", "+919876543210", "09876543210", "+91 9876543210", etc.
+ */
+function normalizePhone(rawPhone) {
+  if (!rawPhone) return null;
+  const cleaned = rawPhone.toString().trim().replace(/[\s\-\(\)]/g, '');
+  if (/^\+91[6-9]\d{9}$/.test(cleaned)) {
+    return cleaned;
+  }
+  if (/^[6-9]\d{9}$/.test(cleaned)) {
+    return `+91${cleaned}`;
+  }
+  if (/^0[6-9]\d{9}$/.test(cleaned)) {
+    return `+91${cleaned.slice(1)}`;
+  }
+  if (/^91[6-9]\d{9}$/.test(cleaned)) {
+    return `+${cleaned}`;
+  }
+  return cleaned;
+}
+
 // -----------------------------------------------------------------------------
 // 1. REGISTER NEW PARENT
 // -----------------------------------------------------------------------------
 async function register(req, res) {
   try {
-    const { full_name, username, email, phone, password } = req.body;
+    const { full_name, username, email, phone, password, relation, alternate_phone } = req.body;
 
-    if (!username || !phone || !password) {
+    if (!phone || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username, phone number, and password are required.'
+        message: 'Primary contact number and password are required.'
       });
     }
 
-    // Check if username or phone already exists
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone || !/^\+91[6-9]\d{9}$/.test(normalizedPhone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid 10-digit Indian mobile number.'
+      });
+    }
+
+    // Optional alternate phone normalization
+    let normalizedAltPhone = null;
+    if (alternate_phone && alternate_phone.trim()) {
+      normalizedAltPhone = normalizePhone(alternate_phone);
+      if (!/^\+91[6-9]\d{9}$/.test(normalizedAltPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Please provide a valid 10-digit alternate contact number.'
+        });
+      }
+    }
+
+    // Normalized relation
+    const validRelations = ['Father', 'Mother', 'Guardian'];
+    const assignedRelation = validRelations.includes(relation) ? relation : 'Father';
+
+    // Username default
+    const normalizedEmail = email ? email.trim().toLowerCase() : null;
+    const parentUsername = (username || normalizedEmail || normalizedPhone).trim().toLowerCase();
+
+    // Check if username, email, or phone already exists
     const existingCheck = await db.query(
-      'SELECT id, username, phone FROM users WHERE username = $1 OR phone = $2;',
-      [username.trim().toLowerCase(), phone.trim()]
+      `SELECT id, username, phone, email 
+       FROM users 
+       WHERE username = $1 OR phone = $2 OR (email IS NOT NULL AND email = $3);`,
+      [parentUsername, normalizedPhone, normalizedEmail]
     );
 
     if (existingCheck.rows.length > 0) {
       const match = existingCheck.rows[0];
-      if (match.username === username.trim().toLowerCase()) {
-        return res.status(400).json({ success: false, message: 'Username is already taken.' });
+      if (match.phone === normalizedPhone) {
+        return res.status(400).json({ success: false, message: 'This primary mobile number is already registered.' });
       }
-      return res.status(400).json({ success: false, message: 'Phone number is already registered.' });
+      if (normalizedEmail && match.email === normalizedEmail) {
+        return res.status(400).json({ success: false, message: 'This email address is already registered.' });
+      }
+      return res.status(400).json({ success: false, message: 'Username is already taken.' });
     }
 
     // Hash password
@@ -37,10 +92,10 @@ async function register(req, res) {
 
     // Insert new user
     const insertUserRes = await db.query(
-      `INSERT INTO users (full_name, username, email, phone, password_hash, role, status)
-       VALUES ($1, $2, $3, $4, $5, 'PARENT', 'ACTIVE')
-       RETURNING id, full_name, username, email, phone, role, status, dpdp_consent_recorded, is_bank_verified, created_at;`,
-      [full_name || username, username.trim().toLowerCase(), email ? email.trim().toLowerCase() : null, phone.trim(), password_hash]
+      `INSERT INTO users (full_name, username, email, phone, alternate_phone, relation, password_hash, role, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'PARENT', 'ACTIVE')
+       RETURNING id, full_name, username, email, phone, alternate_phone, relation, role, status, dpdp_consent_recorded, is_bank_verified, created_at;`,
+      [full_name || parentUsername, parentUsername, normalizedEmail, normalizedPhone, normalizedAltPhone, assignedRelation, password_hash]
     );
 
     const newUser = insertUserRes.rows[0];
@@ -77,24 +132,26 @@ async function register(req, res) {
 // -----------------------------------------------------------------------------
 async function login(req, res) {
   try {
-    const { username, password, device_id, fcm_token } = req.body;
+    const { username, email, phone, password, device_id, fcm_token } = req.body;
 
-    if (!username || !password) {
+    const rawIdentifier = (username || email || phone || '').trim();
+    if (!rawIdentifier || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Username/Email and password are required.'
+        message: 'Mobile number/Email and password are required.'
       });
     }
 
-    const identifier = username.trim().toLowerCase();
+    const identifierLower = rawIdentifier.toLowerCase();
+    const phoneVariant = normalizePhone(rawIdentifier);
 
-    // Query by username or email
+    // Query by username, email, or normalized phone
     const userRes = await db.query(
-      `SELECT id, full_name, username, email, phone, password_hash, role, status, 
+      `SELECT id, full_name, username, email, phone, alternate_phone, relation, password_hash, role, status, 
               mpin_hash, biometric_enabled, dpdp_consent_recorded, is_bank_verified 
        FROM users 
-       WHERE username = $1 OR email = $1;`,
-      [identifier]
+       WHERE username = $1 OR email = $1 OR phone = $1 OR phone = $2;`,
+      [identifierLower, phoneVariant]
     );
 
     if (userRes.rows.length === 0) {
@@ -138,6 +195,8 @@ async function login(req, res) {
         username: user.username,
         email: user.email,
         phone: user.phone,
+        alternate_phone: user.alternate_phone,
+        relation: user.relation,
         biometric_enabled: !!user.biometric_enabled,
         mpin_set: !!user.mpin_hash,
         dpdp_consent_recorded: !!user.dpdp_consent_recorded,

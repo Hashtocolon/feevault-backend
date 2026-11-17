@@ -1,23 +1,23 @@
 // ─────────────────────────────────────────────
-//  FeeVault Parent App — Welcome Carousel Screen (redesigned)
+//  FeeVault Parent App — Welcome Carousel Screen
 //  3 Slides: Locked Savings, Daily Interest, Direct Payout
-//  Static design: no animations, no glass, no background circles.
-//  Colors are unchanged from your original file.
+//  Solid colors only (COLORS tokens), no gradient / glass.
+//  Built-in Animated only — no new packages.
 // ─────────────────────────────────────────────
 
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
+  Animated,
   FlatList,
   TouchableOpacity,
   NativeSyntheticEvent,
   NativeScrollEvent,
   StatusBar,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,9 +25,22 @@ import { RootStackParamList } from '../../../navigation/AppNavigator';
 import { ROUTES } from '../../../constants/routes';
 import { COLORS } from '../../../theme/colors';
 import { CustomButton } from '../../../components/CustomButton';
-import { PillBadge } from '../../../components/PillBadge';
+import Svg, { Path } from 'react-native-svg';
+
+const ArrowRightIcon = ({ color = COLORS.textWhite, size = 18 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M5 12H19M19 12L12 5M19 12L12 19"
+      stroke={color}
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 const { width: W } = Dimensions.get('window');
+const HERO = W * 0.56;
 
 interface CarouselSlide {
   id: string;
@@ -38,6 +51,8 @@ interface CarouselSlide {
   subtitle: string;
   badgeCardTitle: string;
   badgeCardSubtitle: string;
+  tint: string;   // solid hero background
+  accent: string; // highlight color
 }
 
 const SLIDES: CarouselSlide[] = [
@@ -51,17 +66,21 @@ const SLIDES: CarouselSlide[] = [
       'Discipline your education budget. Funds deposited are strictly earmarked and protected from accidental spending.',
     badgeCardTitle: 'Zero Diversion Guarantee',
     badgeCardSubtitle: 'Dedicated escrow protection for your child',
+    tint: COLORS.gradientTop,
+    accent: COLORS.feeBlue,
   },
   {
     id: '2',
-    pillBadge: 'SMART RETURNS',
-    emoji: '📈',
-    title: 'Earn High Yield',
-    highlightText: 'Daily Interest',
+    pillBadge: 'SMART DISCIPLINE',
+    emoji: '📊',
+    title: 'Flexible & Smart',
+    highlightText: 'Split Plans',
     subtitle:
-      'Earn up to 7.5% annual return with daily interest accrual on every rupee saved until the school fee deadline.',
-    badgeCardTitle: 'Compounding Daily Yield',
-    badgeCardSubtitle: 'More savings = Lower net school fee cost',
+      'Save gradually with 50/50, 70/30 split options or AutoPay at your own pace so you never face sudden school fee pressure.',
+    badgeCardTitle: 'Custom Split & AutoPay',
+    badgeCardSubtitle: '50/50 • 70/30 • Daily, Weekly or Monthly',
+    tint: COLORS.gradientBot,
+    accent: COLORS.vaultGreen,
   },
   {
     id: '3',
@@ -73,6 +92,8 @@ const SLIDES: CarouselSlide[] = [
       'On fee due date, FeeVault pays the verified school bank account directly and delivers instant GST fee receipts.',
     badgeCardTitle: 'Instant Verified Payout',
     badgeCardSubtitle: 'Zero queues • Direct to School Account',
+    tint: COLORS.gradientTop,
+    accent: COLORS.feeBlue,
   },
 ];
 
@@ -81,11 +102,11 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const WelcomeCarouselScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlatList<CarouselSlide>>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / W);
+  const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / W);
     if (index !== activeIndex && index >= 0 && index < SLIDES.length) {
       setActiveIndex(index);
     }
@@ -106,103 +127,154 @@ export const WelcomeCarouselScreen: React.FC = () => {
     navigation.navigate(ROUTES.LOGIN);
   };
 
+  const isLast = activeIndex === SLIDES.length - 1;
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Background – same gradient, nothing else */}
-      <LinearGradient
-        colors={['#D9F3FF', '#EEF9FF', '#F7FCFF', '#E9FBF1']}
-        locations={[0, 0.35, 0.7, 1]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.9, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
       <SafeAreaView style={styles.safe}>
-        {/* Top Header Row — Clean Skip Button */}
+        {/* Top row: step counter + Skip */}
         <View style={styles.topRow}>
-          <View />
-          <TouchableOpacity
-            onPress={handleSkip}
-            style={styles.skipBtn}
-            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
+          <Text style={styles.stepText}>
+            <Text style={styles.stepNow}>
+              {String(activeIndex + 1).padStart(2, '0')}
+            </Text>
+            {' / '}
+            {String(SLIDES.length).padStart(2, '0')}
+          </Text>
+
+          {!isLast ? (
+            <TouchableOpacity
+              onPress={handleSkip}
+              style={styles.skipBtn}
+              hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}>
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.skipPlaceholder} />
+          )}
         </View>
 
-        {/* Carousel Slides */}
-        <FlatList
-          ref={flatListRef}
+        {/* Slides */}
+        <Animated.FlatList
+          ref={flatListRef as any}
           data={SLIDES}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item: CarouselSlide) => item.id}
           horizontal
           pagingEnabled
+          bounces={false}
           showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleScroll}
-          getItemLayout={(_, index) => ({
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+            { useNativeDriver: false },
+          )}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScrollEnd}
+          getItemLayout={(_: unknown, index: number) => ({
             length: W,
             offset: W * index,
             index,
           })}
           style={styles.carouselList}
-          renderItem={({ item }) => (
-            <View style={styles.slide}>
-              {/* Hero Card – big square, like the original */}
-              <View style={styles.heroCardOuter}>
-                <View style={styles.heroCard}>
-                  <Text style={styles.heroEmoji}>{item.emoji}</Text>
-                  <View style={styles.heroBadgeRow}>
-                    <Text style={styles.heroBadgeText}>{item.pillBadge}</Text>
+          renderItem={({ item, index }: { item: CarouselSlide; index: number }) => {
+            const input = [(index - 1) * W, index * W, (index + 1) * W];
+            const heroScale = scrollX.interpolate({
+              inputRange: input,
+              outputRange: [0.8, 1, 0.8],
+              extrapolate: 'clamp',
+            });
+            const fade = scrollX.interpolate({
+              inputRange: input,
+              outputRange: [0, 1, 0],
+              extrapolate: 'clamp',
+            });
+
+            return (
+              <View style={styles.slide}>
+                {/* Hero */}
+                <Animated.View
+                  style={[
+                    styles.heroWrap,
+                    { opacity: fade, transform: [{ scale: heroScale }] },
+                  ]}>
+                  <View style={[styles.heroCard, { backgroundColor: item.tint }]}>
+                    <View style={styles.heroInner}>
+                      <Text style={styles.heroEmoji}>{item.emoji}</Text>
+                    </View>
                   </View>
-                </View>
+
+                  {/* Badge overlapping hero edge */}
+                  <View style={[styles.heroBadge, { borderColor: item.tint }]}>
+                    <View
+                      style={[styles.heroBadgeDot, { backgroundColor: item.accent }]}
+                    />
+                    <Text style={[styles.heroBadgeText, { color: item.accent }]}>
+                      {item.pillBadge}
+                    </Text>
+                  </View>
+                </Animated.View>
+
+                {/* Text */}
+                <Animated.View style={[styles.textBlock, { opacity: fade }]}>
+                  <Text style={styles.titleText}>
+                    {item.title}{' '}
+                    <Text style={{ color: item.accent }}>{item.highlightText}</Text>
+                  </Text>
+                  <Text style={styles.subtitleText}>{item.subtitle}</Text>
+                </Animated.View>
+
+                {/* Benefit card */}
+                <Animated.View style={[styles.benefitCard, { opacity: fade }]}>
+                  <View
+                    style={[styles.benefitAccent, { backgroundColor: item.accent }]}
+                  />
+                  <View style={styles.benefitInfo}>
+                    <Text style={styles.benefitTitle}>{item.badgeCardTitle}</Text>
+                    <Text style={styles.benefitSub}>{item.badgeCardSubtitle}</Text>
+                  </View>
+                  <View style={styles.benefitTick}>
+                    <Text style={styles.benefitTickText}>✓</Text>
+                  </View>
+                </Animated.View>
               </View>
-
-              {/* Title & Tagline */}
-              <Text style={styles.titleText}>
-                {item.title}{' '}
-                <Text style={styles.highlightText}>{item.highlightText}</Text>
-              </Text>
-
-              <Text style={styles.subtitleText}>{item.subtitle}</Text>
-
-              {/* Feature Benefit Card */}
-              <View style={styles.benefitCard}>
-                <View style={styles.benefitInfo}>
-                  <Text style={styles.benefitTitle}>{item.badgeCardTitle}</Text>
-                  <Text style={styles.benefitSub}>{item.badgeCardSubtitle}</Text>
-                </View>
-                <View style={styles.benefitTick}>
-                  <Text style={styles.benefitTickText}>✓</Text>
-                </View>
-              </View>
-            </View>
-          )}
+            );
+          }}
         />
 
-        {/* Bottom Navigation Section */}
+        {/* Bottom */}
         <View style={styles.bottomSection}>
-          {/* Pagination Dots */}
+          {/* Animated pagination dots */}
           <View style={styles.dotsRow}>
-            {SLIDES.map((_, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.dot,
-                  i === activeIndex ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
-            ))}
+            {SLIDES.map((_, i) => {
+              const range = [(i - 1) * W, i * W, (i + 1) * W];
+              const dotWidth = scrollX.interpolate({
+                inputRange: range,
+                outputRange: [8, 26, 8],
+                extrapolate: 'clamp',
+              });
+              const dotOpacity = scrollX.interpolate({
+                inputRange: range,
+                outputRange: [0.25, 1, 0.25],
+                extrapolate: 'clamp',
+              });
+              return (
+                <Animated.View
+                  key={i}
+                  style={[styles.dot, { width: dotWidth, opacity: dotOpacity }]}
+                />
+              );
+            })}
           </View>
 
-          {/* Action Button */}
           <CustomButton
-            label={activeIndex === SLIDES.length - 1 ? 'Get Started →' : 'Continue'}
+            label={isLast ? 'Get Started' : 'Continue'}
+            icon={<ArrowRightIcon color={COLORS.textWhite} size={18} />}
+            iconPosition="right"
             onPress={handleNext}
             style={styles.actionBtn}
           />
 
-          {/* Security Tagline */}
           <View style={styles.secureRow}>
             <View style={styles.secureRule} />
             <Text style={styles.secureTag}>
@@ -219,7 +291,7 @@ export const WelcomeCarouselScreen: React.FC = () => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#EEF9FF',
+    backgroundColor: COLORS.cardBg,
   },
   safe: {
     flex: 1,
@@ -229,23 +301,30 @@ const styles = StyleSheet.create({
   /* Header */
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingTop: 18, // Moved down nicely for easy reach & clean spacing
+    paddingHorizontal: 24,
+    paddingTop: 18,
+  },
+  stepText: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: COLORS.textLight,
+  },
+  stepNow: {
+    color: COLORS.feeBlue,
   },
   skipBtn: {
     paddingVertical: 7,
     paddingHorizontal: 16,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.cardBg,
     borderWidth: 1,
-    borderColor: 'rgba(160,210,255,0.8)',
-    shadowColor: '#0757DF',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    borderColor: COLORS.inputBorder,
+  },
+  skipPlaceholder: {
+    height: 32,
   },
   skipText: {
     fontSize: 13,
@@ -262,59 +341,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
-    paddingTop: 10,
-    marginTop: -28, // Moves the entire hero card and illustration up nicely
+    marginTop: -12,
   },
 
-  /* Hero card – big square, solid (no glass) */
-  heroCardOuter: {
-    width: W * 0.48,
-    height: W * 0.48,
-    borderRadius: 34,
-    padding: 3,
-    backgroundColor: '#78D7FF',
-    shadowColor: '#35B6FF',
-    shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
-    marginBottom: 20, // Reduced space to keep everything comfortably higher
+  /* Hero */
+  heroWrap: {
+    width: HERO,
+    height: HERO,
+    marginBottom: 34,
   },
   heroCard: {
     flex: 1,
-    borderRadius: 33,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+  },
+  heroInner: {
+    width: HERO * 0.62,
+    height: HERO * 0.62,
+    borderRadius: (HERO * 0.62) / 2,
+    backgroundColor: COLORS.cardBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.navy,
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   heroEmoji: {
-    fontSize: 62,
-    marginBottom: 10,
+    fontSize: 64,
   },
-  heroBadgeRow: {
-    paddingHorizontal: 11,
-    paddingVertical: 4,
+  heroBadge: {
+    position: 'absolute',
+    bottom: -16,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(26,86,219,0.12)',
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1.5,
+    shadowColor: COLORS.navy,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  heroBadgeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 7,
   },
   heroBadgeText: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '800',
-    color: COLORS.feeBlue,
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
 
   /* Text */
+  textBlock: {
+    alignItems: 'center',
+  },
   titleText: {
-    fontSize: 26,
+    fontSize: 27,
     fontWeight: '800',
     color: COLORS.textDark,
     textAlign: 'center',
-    lineHeight: 33,
+    lineHeight: 34,
     marginBottom: 12,
-  },
-  highlightText: {
-    color: COLORS.feeBlue,
   },
   subtitleText: {
     fontSize: 14,
@@ -325,22 +422,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
 
-  /* Benefit card – clean solid white with soft border */
+  /* Benefit card */
   benefitCard: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     paddingVertical: 13,
-    paddingHorizontal: 16,
+    paddingRight: 16,
+    paddingLeft: 0,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.cardBg,
     borderWidth: 1,
-    borderColor: '#D3EBFF',
-    shadowColor: '#0757DF',
-    shadowOpacity: 0.05,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+    shadowColor: COLORS.navy,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+  },
+  benefitAccent: {
+    width: 4,
+    alignSelf: 'stretch',
+    marginRight: 14,
+    marginVertical: -13,
   },
   benefitInfo: {
     flex: 1,
@@ -356,20 +461,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   benefitTick: {
-    width: 22,
-    height: 22,
-    borderRadius: 7,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
     marginLeft: 10,
-    backgroundColor: '#E9FBF1',
-    borderWidth: 1,
-    borderColor: '#B8E6CD',
+    backgroundColor: COLORS.pillBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   benefitTickText: {
     fontSize: 12,
     fontWeight: '900',
-    color: COLORS.vaultGreen,
+    color: COLORS.pillText,
   },
 
   /* Bottom */
@@ -388,14 +491,7 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     marginHorizontal: 4,
-  },
-  dotActive: {
-    width: 26,
     backgroundColor: COLORS.feeBlue,
-  },
-  dotInactive: {
-    width: 8,
-    backgroundColor: '#CBD5E1',
   },
   actionBtn: {
     width: '100%',

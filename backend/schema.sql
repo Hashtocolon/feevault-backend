@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE,
     phone VARCHAR(15) UNIQUE NOT NULL,
+    alternate_phone VARCHAR(20),
+    relation VARCHAR(30) DEFAULT 'Father', -- Father, Mother, Guardian
     full_name VARCHAR(100),
     email VARCHAR(100),
     password_hash VARCHAR(255),
