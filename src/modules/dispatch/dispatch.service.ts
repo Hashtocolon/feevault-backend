@@ -153,7 +153,7 @@ export class DispatchService {
          ON CONFLICT DO NOTHING`,
         [booking.id, userId, reason || 'Escalation raised', note || null],
       );
-    } catch (e) {
+    } catch (e: any) {
       console.warn('ops_escalations insert notice:', e.message);
     }
 

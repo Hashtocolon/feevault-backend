@@ -42,7 +42,7 @@ export class ShareLinkService {
          SET share_token = EXCLUDED.share_token, expires_at = EXCLUDED.expires_at, updated_at = NOW()`,
         [booking.id, shareToken, expiresAt],
       );
-    } catch (err) {
+    } catch (err: any) {
       console.warn('consignee_otp_verifications insert notice:', err.message);
     }
 

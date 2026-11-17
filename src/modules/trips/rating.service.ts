@@ -99,7 +99,7 @@ export class RatingService {
           dto.feedback || null,
         ],
       );
-    } catch (err) {
+    } catch (err: any) {
       console.warn('trip_ratings insertion notice:', err.message);
     }
 
@@ -113,3 +113,4 @@ export class RatingService {
     };
   }
 }
+
