@@ -146,9 +146,6 @@ export const LoginScreen: React.FC = () => {
       const res = await requestPasswordOtp(resetIdentifier.trim());
       setForgotLoading(false);
       setOtpSent(true);
-      if (res.otp_preview) {
-        setOtpHint(`Test code: ${res.otp_preview}`);
-      }
       Alert.alert('Code Sent', res.message);
     } catch (err: any) {
       setForgotLoading(false);
@@ -272,22 +269,6 @@ export const LoginScreen: React.FC = () => {
       setLoading(false);
       Alert.alert(isSignUp ? 'Registration Failed' : 'Sign In Failed', err.message);
     }
-  };
-
-  const handleBiometricLogin = () => {
-    Alert.alert(
-      'Biometric Sign In',
-      'Use Fingerprint or Face ID to quickly unlock your FeeVault account.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Verify',
-          onPress: () => {
-            navigation.navigate(ROUTES.HOME);
-          },
-        },
-      ],
-    );
   };
 
   const eyeIcon = showPassword ? (
@@ -488,27 +469,6 @@ export const LoginScreen: React.FC = () => {
                 onPress={handleSubmit}
                 style={styles.submitBtn}
               />
-
-              {/* Biometric Shortcut (Only on Sign In) */}
-              {!isSignUp ? (
-                <>
-                  <View style={styles.orRow}>
-                    <View style={styles.orLine} />
-                    <Text style={styles.orText}>OR</Text>
-                    <View style={styles.orLine} />
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.biometricBtn}
-                    onPress={handleBiometricLogin}
-                    activeOpacity={0.7}>
-                    <View style={styles.bioIconWrap}>
-                      <FingerprintIcon color={COLORS.feeBlue} size={24} />
-                    </View>
-                    <Text style={styles.bioText}>Quick Sign in with Biometrics</Text>
-                  </TouchableOpacity>
-                </>
-              ) : null}
             </View>
 
             {/* Footer */}

@@ -477,8 +477,7 @@ async function forgotPassword(req, res) {
       success: true,
       message: emailSent 
         ? `A 6-digit verification code has been sent directly to your Gmail (${user.email}).`
-        : `A 6-digit verification code has been sent to ${user.phone || user.email}.`,
-      otp_preview: otp
+        : `A 6-digit verification code has been sent to ${user.phone || user.email}.`
     });
   } catch (err) {
     console.error('Error in forgotPassword:', err);
