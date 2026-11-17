@@ -1,7 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { Resend } = require('resend');
 const db = require('../db');
 const { JWT_SECRET } = require('../middleware/auth');
+
+const resend = new Resend(process.env.RESEND_API_KEY || '');
 
 /**
  * Normalizes an Indian phone number to standard E.164 (+91XXXXXXXXXX) format
@@ -431,10 +434,51 @@ async function forgotPassword(req, res) {
 
     console.log(`[FeeVault OTP] Generated reset OTP ${otp} for ${user.phone || user.email}`);
 
+    // Deliver via Resend if parent has an email registered
+    let emailSent = false;
+    if (user.email) {
+      try {
+        const emailResult = await resend.emails.send({
+          from: 'FeeVault Security <onboarding@resend.dev>',
+          to: [user.email],
+          subject: `${otp} is your FeeVault Password Reset Code`,
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 32px 24px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0;">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <h1 style="color: #0d9488; font-size: 26px; font-weight: 800; letter-spacing: 0.5px; margin: 0;">FEEVAULT</h1>
+                <p style="color: #64748b; font-size: 13px; margin-top: 4px;">Smart School Fee Vault & Split Plans</p>
+              </div>
+              <div style="background: #f8fafc; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
+                <p style="color: #334155; font-size: 15px; margin: 0 0 16px 0;">Hello <strong>${user.full_name || 'Parent'}</strong>,</p>
+                <p style="color: #64748b; font-size: 14px; margin: 0 0 20px 0;">We received a request to reset your FeeVault account password. Please enter the verification code below in your FeeVault app:</p>
+                <div style="background: #0d9488; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: 6px; padding: 14px 28px; border-radius: 8px; display: inline-block; margin-bottom: 8px;">
+                  ${otp}
+                </div>
+                <p style="color: #94a3b8; font-size: 12px; margin-top: 12px; margin-bottom: 0;">This OTP code is valid for 10 minutes.</p>
+              </div>
+              <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin: 0; text-align: center;">
+                If you did not request this password reset, please ignore this email. FeeVault will never ask for your password or OTP.
+              </p>
+            </div>
+          `
+        });
+        if (emailResult.error) {
+          console.error('[FeeVault Resend Error]:', emailResult.error);
+        } else {
+          console.log('[FeeVault Resend Success]: Real email OTP sent to', user.email, emailResult.data);
+          emailSent = true;
+        }
+      } catch (sendErr) {
+        console.error('[FeeVault Resend Exception]:', sendErr);
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      message: `A 6-digit verification code has been sent to ${user.phone || user.email}.`,
-      otp_preview: otp // Convenient for instant testing & verification
+      message: emailSent 
+        ? `A 6-digit verification code has been sent directly to your Gmail (${user.email}).`
+        : `A 6-digit verification code has been sent to ${user.phone || user.email}.`,
+      otp_preview: otp
     });
   } catch (err) {
     console.error('Error in forgotPassword:', err);
