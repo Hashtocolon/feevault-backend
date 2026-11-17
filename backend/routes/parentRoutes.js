@@ -14,6 +14,8 @@ const reportsExceptionsCtrl = require('../controllers/parentReportsExceptionsCon
 // -----------------------------------------------------------------------------
 router.post('/auth/register', authCtrl.register);
 router.post('/auth/login', authCtrl.login);
+router.post('/auth/forgot-password', authCtrl.forgotPassword);
+router.post('/auth/reset-password', authCtrl.resetPassword);
 router.post('/auth/consent', authenticateParent, authCtrl.submitConsent);
 router.post('/auth/mpin/setup', authenticateParent, authCtrl.setupMpin);
 router.post('/auth/mpin/login', authCtrl.loginMpin);

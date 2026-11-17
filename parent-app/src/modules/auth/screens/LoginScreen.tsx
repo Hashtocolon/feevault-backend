@@ -16,6 +16,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,7 +27,7 @@ import { ROUTES } from '../../../constants/routes';
 import { COLORS } from '../../../theme/colors';
 import { CustomInput } from '../../../components/CustomInput';
 import { CustomButton } from '../../../components/CustomButton';
-import { registerParent, loginParent } from '../api/authApi';
+import { registerParent, loginParent, requestPasswordOtp, resetPasswordWithOtp } from '../api/authApi';
 
 /* ---------- Icons ---------- */
 const EyeOpenIcon = ({ color = COLORS.muted, size = 20 }: { color?: string; size?: number }) => (
@@ -117,11 +118,80 @@ export const LoginScreen: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Forgot Password Modal States
+  const [forgotModalVisible, setForgotModalVisible] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [otpHint, setOtpHint] = useState('');
+
   const clearErrors = () => {
     setFullNameError('');
     setPhoneError('');
     setEmailError('');
     setPasswordError('');
+  };
+
+  const handleRequestOtp = async () => {
+    if (!resetIdentifier.trim()) {
+      Alert.alert('Required', 'Please enter your registered mobile number or email address.');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await requestPasswordOtp(resetIdentifier.trim());
+      setForgotLoading(false);
+      setOtpSent(true);
+      if (res.otp_preview) {
+        setOtpHint(`Test code: ${res.otp_preview}`);
+      }
+      Alert.alert('Code Sent', res.message);
+    } catch (err: any) {
+      setForgotLoading(false);
+      Alert.alert('Error', err.message);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetOtp.trim()) {
+      Alert.alert('Required', 'Please enter the 6-digit verification code.');
+      return;
+    }
+    if (!newPassword || newPassword.length < 6) {
+      Alert.alert('Invalid Password', 'New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      Alert.alert('Mismatch', 'Passwords do not match.');
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const res = await resetPasswordWithOtp({
+        identifier: resetIdentifier.trim(),
+        otp: resetOtp.trim(),
+        new_password: newPassword,
+      });
+      setForgotLoading(false);
+      Alert.alert('Success', res.message);
+      // Pre-fill email/phone on Sign In form
+      setEmail(resetIdentifier.trim());
+      // Close modal & reset fields
+      setForgotModalVisible(false);
+      setOtpSent(false);
+      setResetOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setOtpHint('');
+    } catch (err: any) {
+      setForgotLoading(false);
+      Alert.alert('Error', err.message);
+    }
   };
 
   const switchMode = (signUp: boolean) => {
@@ -397,12 +467,14 @@ export const LoginScreen: React.FC = () => {
               ) : (
                 <TouchableOpacity
                   style={styles.forgotPassBtn}
-                  onPress={() =>
-                    Alert.alert(
-                      'Reset Password',
-                      'Password reset instructions will be sent to your registered email address.',
-                    )
-                  }>
+                  onPress={() => {
+                    setResetIdentifier(email.trim());
+                    setOtpSent(false);
+                    setResetOtp('');
+                    setNewPassword('');
+                    setConfirmNewPassword('');
+                    setForgotModalVisible(true);
+                  }}>
                   <Text style={styles.forgotPassText}>Forgot Password?</Text>
                 </TouchableOpacity>
               )}
@@ -448,6 +520,116 @@ export const LoginScreen: React.FC = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={forgotModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setForgotModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalKeyboard}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Reset Password</Text>
+                <TouchableOpacity
+                  onPress={() => setForgotModalVisible(false)}
+                  style={styles.modalCloseBtn}
+                  activeOpacity={0.7}>
+                  <Text style={styles.modalCloseText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.modalSub}>
+                {!otpSent
+                  ? 'Enter your registered Mobile Number or Email to receive a 6-digit verification code.'
+                  : 'Enter the 6-digit verification code and choose a new password.'}
+              </Text>
+
+              {!otpSent ? (
+                <>
+                  <CustomInput
+                    label="Mobile Number or Email"
+                    value={resetIdentifier}
+                    onChangeText={setResetIdentifier}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+
+                  <CustomButton
+                    label={forgotLoading ? 'Sending Code...' : 'Send Verification Code'}
+                    loading={forgotLoading}
+                    onPress={handleRequestOtp}
+                    style={styles.modalSubmitBtn}
+                  />
+                </>
+              ) : (
+                <>
+                  {otpHint ? (
+                    <View style={styles.otpHintBox}>
+                      <Text style={styles.otpHintText}>🔑 {otpHint}</Text>
+                    </View>
+                  ) : null}
+
+                  <CustomInput
+                    label="6-Digit Verification Code"
+                    value={resetOtp}
+                    onChangeText={setResetOtp}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+
+                  <CustomInput
+                    label="New Password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry={!showNewPassword}
+                    rightIcon={
+                      showNewPassword ? (
+                        <EyeOpenIcon color={COLORS.feeBlue} size={20} />
+                      ) : (
+                        <EyeClosedIcon color={COLORS.muted} size={20} />
+                      )
+                    }
+                    onRightIconPress={() => setShowNewPassword(!showNewPassword)}
+                  />
+
+                  <CustomInput
+                    label="Confirm New Password"
+                    value={confirmNewPassword}
+                    onChangeText={setConfirmNewPassword}
+                    secureTextEntry={!showNewPassword}
+                    rightIcon={
+                      showNewPassword ? (
+                        <EyeOpenIcon color={COLORS.feeBlue} size={20} />
+                      ) : (
+                        <EyeClosedIcon color={COLORS.muted} size={20} />
+                      )
+                    }
+                    onRightIconPress={() => setShowNewPassword(!showNewPassword)}
+                  />
+
+                  <CustomButton
+                    label={forgotLoading ? 'Updating Password...' : 'Save New Password'}
+                    loading={forgotLoading}
+                    onPress={handleResetPassword}
+                    style={styles.modalSubmitBtn}
+                  />
+
+                  <TouchableOpacity
+                    onPress={() => setOtpSent(false)}
+                    style={styles.resendBtn}
+                    activeOpacity={0.7}>
+                    <Text style={styles.resendText}>Change Mobile / Resend Code</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -676,6 +858,86 @@ const styles = StyleSheet.create({
     letterSpacing: 2.4,
     fontWeight: '800',
     color: COLORS.textLight,
+  },
+
+  /* Modal Overlay & Card */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  modalKeyboard: {
+    width: '100%',
+  },
+  modalCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    shadowColor: COLORS.navy,
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: COLORS.textDark,
+  },
+  modalCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.inputBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCloseText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textMid,
+  },
+  modalSub: {
+    fontSize: 13,
+    color: COLORS.textMid,
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  modalSubmitBtn: {
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  otpHintBox: {
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  otpHintText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.feeBlue,
+  },
+  resendBtn: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 6,
+  },
+  resendText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: COLORS.feeBlue,
   },
 });
 

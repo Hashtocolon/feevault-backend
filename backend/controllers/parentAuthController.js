@@ -387,12 +387,144 @@ async function loginMpin(req, res) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// 7. FORGOT PASSWORD (REQUEST 6-DIGIT OTP)
+// -----------------------------------------------------------------------------
+async function forgotPassword(req, res) {
+  try {
+    const { identifier } = req.body;
+    if (!identifier || !identifier.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide your registered mobile number or email.'
+      });
+    }
+
+    const raw = identifier.trim();
+    const rawLower = raw.toLowerCase();
+    const phoneVariant = normalizePhone(raw);
+
+    const userRes = await db.query(
+      `SELECT id, full_name, email, phone 
+       FROM users 
+       WHERE email = $1 OR username = $1 OR phone = $1 OR phone = $2;`,
+      [rawLower, phoneVariant]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No registered parent account found with this mobile or email.'
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await db.query(
+      'UPDATE users SET reset_otp = $1, reset_otp_expires_at = $2 WHERE id = $3;',
+      [otp, expiresAt, user.id]
+    );
+
+    console.log(`[FeeVault OTP] Generated reset OTP ${otp} for ${user.phone || user.email}`);
+
+    return res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been sent to ${user.phone || user.email}.`,
+      otp_preview: otp // Convenient for instant testing & verification
+    });
+  } catch (err) {
+    console.error('Error in forgotPassword:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error processing password reset.' });
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 8. RESET PASSWORD WITH VERIFIED OTP
+// -----------------------------------------------------------------------------
+async function resetPassword(req, res) {
+  try {
+    const { identifier, otp, new_password } = req.body;
+
+    if (!identifier || !otp || !new_password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mobile/Email, OTP code, and new password are required.'
+      });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long.'
+      });
+    }
+
+    const raw = identifier.trim();
+    const rawLower = raw.toLowerCase();
+    const phoneVariant = normalizePhone(raw);
+
+    const userRes = await db.query(
+      `SELECT id, full_name, reset_otp, reset_otp_expires_at 
+       FROM users 
+       WHERE email = $1 OR username = $1 OR phone = $1 OR phone = $2;`,
+      [rawLower, phoneVariant]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User account not found.'
+      });
+    }
+
+    const user = userRes.rows[0];
+
+    if (!user.reset_otp || user.reset_otp !== otp.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code. Please check and try again.'
+      });
+    }
+
+    if (new Date() > new Date(user.reset_otp_expires_at)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new code.'
+      });
+    }
+
+    // Hash new password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(new_password, saltRounds);
+
+    // Clear OTP and update password
+    await db.query(
+      'UPDATE users SET password_hash = $1, reset_otp = NULL, reset_otp_expires_at = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $2;',
+      [password_hash, user.id]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: 'Your password has been reset successfully. Please sign in with your new password.'
+    });
+  } catch (err) {
+    console.error('Error in resetPassword:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error resetting password.' });
+  }
+}
+
 module.exports = {
   register,
   login,
   submitConsent,
   saveKycAndBank,
   setupMpin,
-  loginMpin
+  loginMpin,
+  forgotPassword,
+  resetPassword
 };
 
