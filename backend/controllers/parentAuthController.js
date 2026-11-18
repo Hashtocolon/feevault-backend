@@ -312,6 +312,39 @@ async function saveKycAndBank(req, res) {
 }
 
 // -----------------------------------------------------------------------------
+// 4B. GET VERIFIED KYC & REFUND BANK DETAILS
+// -----------------------------------------------------------------------------
+async function getKycAndBank(req, res) {
+  try {
+    const parentId = req.user.id;
+    const userRes = await db.query(
+      `SELECT pan_number, refund_bank_account, refund_bank_ifsc, refund_bank_account_name, is_bank_verified 
+       FROM users WHERE id = $1;`,
+      [parentId]
+    );
+
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Parent account not found.' });
+    }
+
+    const user = userRes.rows[0];
+    return res.status(200).json({
+      success: true,
+      data: {
+        pan_number: user.pan_number || '',
+        bank_account_number: user.refund_bank_account || '',
+        ifsc_code: user.refund_bank_ifsc || '',
+        account_holder_name: user.refund_bank_account_name || '',
+        is_bank_verified: !!user.is_bank_verified
+      }
+    });
+  } catch (err) {
+    console.error('Error in getKycAndBank:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error fetching bank details.' });
+  }
+}
+
+// -----------------------------------------------------------------------------
 // 5. SETUP 4-DIGIT BACKUP MPIN
 // -----------------------------------------------------------------------------
 async function setupMpin(req, res) {
@@ -565,6 +598,7 @@ module.exports = {
   login,
   submitConsent,
   saveKycAndBank,
+  getKycAndBank,
   setupMpin,
   loginMpin,
   forgotPassword,

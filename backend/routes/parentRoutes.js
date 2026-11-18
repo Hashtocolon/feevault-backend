@@ -24,6 +24,7 @@ router.post('/auth/mpin/login', authCtrl.loginMpin);
 // 2. KYC & REFUND BANK BINDING
 // -----------------------------------------------------------------------------
 router.post('/parent/kyc-bank', authenticateParent, authCtrl.saveKycAndBank);
+router.get('/parent/kyc-bank', authenticateParent, authCtrl.getKycAndBank);
 
 // -----------------------------------------------------------------------------
 // 3. SCHOOLS & STUDENTS
