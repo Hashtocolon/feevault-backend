@@ -335,7 +335,6 @@ const KycBankBindingScreen: React.FC = () => {
 
             <CustomInput
               label="PAN Number"
-              placeholder="e.g. ABCDE1234F"
               value={pan}
               onChangeText={t => setPan(t.toUpperCase())}
               autoCapitalize="characters"
@@ -366,21 +365,18 @@ const KycBankBindingScreen: React.FC = () => {
 
             <CustomInput
               label="Account Holder Name"
-              placeholder="As per bank records"
               value={holderName}
               onChangeText={setHolderName}
               autoCapitalize="words"
             />
             <CustomInput
               label="Bank Account Number"
-              placeholder="Enter account number"
               value={accountNumber}
               onChangeText={setAccountNumber}
               keyboardType="numeric"
             />
             <CustomInput
               label="IFSC Code"
-              placeholder="e.g. SBIN0001234"
               value={ifsc}
               onChangeText={t => setIfsc(t.toUpperCase())}
               autoCapitalize="characters"
