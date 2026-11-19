@@ -1,12 +1,26 @@
 import { Module } from '@nestjs/common';
+
 import { TripsController } from './trips.controller';
 import { RatingService } from './rating.service';
 import { DispatchModule } from '../dispatch/dispatch.module';
+import { DatabaseModule } from '../../database/database.module';
+
+import { RatingService } from './rating.service';
+import { AnalyticsService } from './analytics.service';
 
 @Module({
-  imports: [DispatchModule],
+  imports: [
+    DispatchModule,
+    DatabaseModule,
+  ],
   controllers: [TripsController],
   providers: [RatingService],
   exports: [RatingService],
+})
+export class TripsModule {}
+  providers: [
+    RatingService,
+    AnalyticsService,
+  ],
 })
 export class TripsModule {}
