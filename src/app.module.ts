@@ -17,6 +17,16 @@ import { ProfileModule } from './modules/profile/profile.module';
 import { ConsentModule } from './modules/consent/consent.module';
 import { ShareLinkModule } from './modules/share-link/share-link.module';
 import { ConsigneeModule } from './modules/consignee/consignee.module';
+import { DocumentsModule } from './modules/documents/documents.module';
+import { ClaimsModule } from './modules/claims/claims.module';
+import { CustomerSettingsModule } from './modules/customer-settings/customer-settings.module';
+import { SupportModule } from './modules/support/support.module';
+import { DispatchOffersModule } from './modules/dispatch_offers/dispatch_offers.module';
+import { FleetAssignmentModule } from './modules/fleet_assignment/fleet_assignment.module';
+import { PretripModule } from './modules/pretrip/pretrip.module';
+import { PrecoolingModule } from './modules/precooling/precooling.module';
+import { CompartmentModule } from './modules/compartment/compartment.module';
+import { PickupArrivalModule } from './modules/pickup_arrival/pickup_arrival.module';
 
 @Module({
   imports: [
@@ -41,6 +51,16 @@ import { ConsigneeModule } from './modules/consignee/consignee.module';
     ConsentModule,
     ShareLinkModule,
     ConsigneeModule,
+    DocumentsModule,
+    ClaimsModule,
+    CustomerSettingsModule,
+    SupportModule,
+    DispatchOffersModule,
+    FleetAssignmentModule,
+    PretripModule,
+    PrecoolingModule,
+    CompartmentModule,
+    PickupArrivalModule,
   ],
 })
 export class AppModule {}
