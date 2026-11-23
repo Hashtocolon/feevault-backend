@@ -30,6 +30,7 @@ router.get('/parent/kyc-bank', authenticateParent, authCtrl.getKycAndBank);
 // 3. SCHOOLS & STUDENTS
 // -----------------------------------------------------------------------------
 router.get('/schools/lookup', authenticateParent, schoolStudentCtrl.lookupSchool);
+router.post('/schools/request-enroll', authenticateParent, schoolStudentCtrl.requestSchoolEnrollment);
 router.post('/students', authenticateParent, schoolStudentCtrl.addStudent);
 router.get('/students', authenticateParent, schoolStudentCtrl.listStudents);
 router.get('/students/:id', authenticateParent, schoolStudentCtrl.getStudentDetails);

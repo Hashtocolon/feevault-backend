@@ -345,12 +345,12 @@ async function getKycAndBank(req, res) {
 }
 
 // -----------------------------------------------------------------------------
-// 5. SETUP 4-DIGIT BACKUP MPIN
+// 5. SETUP 4-DIGIT MPIN & BIOMETRIC UNLOCK
 // -----------------------------------------------------------------------------
 async function setupMpin(req, res) {
   try {
     const parentId = req.user.id;
-    const { mpin } = req.body;
+    const { mpin, biometric_enabled } = req.body;
 
     if (!mpin || String(mpin).trim().length !== 4) {
       return res.status(400).json({ success: false, message: 'MPIN must be exactly 4 digits.' });
@@ -358,15 +358,17 @@ async function setupMpin(req, res) {
 
     const saltRounds = 10;
     const mpin_hash = await bcrypt.hash(String(mpin).trim(), saltRounds);
+    const isBio = biometric_enabled !== false;
 
     await db.query(
-      'UPDATE users SET mpin_hash = $1, biometric_enabled = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = $2;',
-      [mpin_hash, parentId]
+      'UPDATE users SET mpin_hash = $1, biometric_enabled = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3;',
+      [mpin_hash, isBio, parentId]
     );
 
     return res.status(200).json({
       success: true,
-      message: '4-digit backup MPIN configured successfully'
+      message: 'Security credentials configured successfully',
+      biometric_enabled: isBio
     });
   } catch (err) {
     console.error('Error in setupMpin:', err);
