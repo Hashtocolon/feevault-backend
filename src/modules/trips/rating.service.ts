@@ -18,13 +18,21 @@ export class RatingService {
     userId: string,
     dto: RateTripDto,
   ) {
+
+    if (!bookingId) {
+      throw new BadRequestException('Booking ID is required');
+    }
+
+
     const client = await this.db.getPool().connect();
 
     try {
       await client.query('BEGIN');
 
-      // Find the customer's profile
-      const customerResult = await client.query(
+
+      // Find customer profile
+      let customerResult = await client.query(
+
         `SELECT id
          FROM customer_profiles
          WHERE user_id = $1
@@ -32,11 +40,27 @@ export class RatingService {
         [userId],
       );
 
-      if (!customerResult.rows.length) {
+
+      let customerId = customerResult.rows[0]?.id;
+
+      // Create customer profile if it does not exist
+      if (!customerId) {
+        const newProfile = await client.query(
+          `INSERT INTO customer_profiles (user_id, updated_at)
+           VALUES ($1, NOW())
+           ON CONFLICT (user_id)
+           DO UPDATE SET updated_at = NOW()
+           RETURNING id`,
+          [userId],
+        );
+
+        customerId = newProfile.rows[0]?.id;
+      }
+
+      if (!customerId) {
         throw new NotFoundException('Customer profile not found');
       }
 
-      const customerId = customerResult.rows[0].id;
 
       // Find booking and verify ownership
       const bookingResult = await client.query(
@@ -46,7 +70,9 @@ export class RatingService {
            status,
            assigned_driver_id
          FROM bookings
-         WHERE id = $1
+
+         WHERE id::text = $1
+
            AND customer_id = $2
          FOR UPDATE`,
         [bookingId, customerId],
@@ -58,19 +84,24 @@ export class RatingService {
 
       const booking = bookingResult.rows[0];
 
-      // Rating is allowed only after successful delivery
+
+      // Rating allowed only after successful delivery
+
       if (booking.status !== 'delivered') {
         throw new BadRequestException(
           'You can rate this trip only after successful delivery.',
         );
       }
 
-      // Check whether this booking has already been rated
+
+      // Check existing rating
       const existingRating = await client.query(
         `SELECT id
          FROM trip_ratings
-         WHERE booking_id = $1`,
-        [bookingId],
+         WHERE booking_id = $1
+         LIMIT 1`,
+        [booking.id],
+
       );
 
       if (existingRating.rows.length) {
@@ -79,12 +110,15 @@ export class RatingService {
         );
       }
 
-      // Check that e-POD exists
+
+      // Check e-POD
       const epodResult = await client.query(
         `SELECT id
          FROM epods
-         WHERE booking_id = $1`,
-        [bookingId],
+         WHERE booking_id = $1
+         LIMIT 1`,
+        [booking.id],
+
       );
 
       if (!epodResult.rows.length) {
@@ -102,13 +136,16 @@ export class RatingService {
           rating_stars,
           hygiene_grade_observed,
           tags,
-          feedback
+
+          feedback,
+          created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())`,
         [
-          bookingId,
+          booking.id,
           customerId,
-          booking.assigned_driver_id,
+          booking.assigned_driver_id || null,
+
           dto.ratingStars,
           dto.hygieneGradeObserved,
           dto.tags || [],
@@ -119,6 +156,9 @@ export class RatingService {
       await client.query('COMMIT');
 
       return {
+
+        success: true,
+
         bookingRef: booking.booking_ref,
         ratingRecorded: true,
         ratingStars: dto.ratingStars,

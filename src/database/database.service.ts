@@ -45,7 +45,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         this.logger.warn(`Slow query (${duration}ms): ${text}`);
       }
       return res;
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Database Query Error: ${error.message}`, error.stack);
       throw error;
     }

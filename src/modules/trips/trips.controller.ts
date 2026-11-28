@@ -4,12 +4,14 @@ import {
   Post,
   Get,
   Param,
-  UseGuards,
+
   Body,
+  UseGuards,
   Query,
   Res,
-  StreamableFile,
 } from '@nestjs/common';
+
+
 import type { Response } from 'express';
 
 import { DispatchService } from '../dispatch/dispatch.service';
@@ -28,24 +30,33 @@ export class TripsController {
     private readonly analyticsService: AnalyticsService,
   ) {}
 
+  // Generate Agora Token
   @UseGuards(JwtAuthGuard)
   @Post(':bookingId/agora/token')
   async generateAgoraToken(
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.dispatchService.generateAgoraToken(bookingId, userId);
+    return this.dispatchService.generateAgoraToken(
+      bookingId,
+      userId,
+    );
   }
 
+  // Get Chat Messages
   @UseGuards(JwtAuthGuard)
   @Get(':bookingId/chat/messages')
   async getChatMessages(
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.dispatchService.getChatMessages(bookingId, userId);
+    return this.dispatchService.getChatMessages(
+      bookingId,
+      userId,
+    );
   }
 
+  // Submit Trip Rating
   @UseGuards(JwtAuthGuard)
   @Post(':bookingId/rating')
   async rateTrip(
@@ -53,7 +64,11 @@ export class TripsController {
     @CurrentUser('id') userId: string,
     @Body() dto: RateTripDto,
   ) {
-    return this.ratingService.rateTrip(bookingId, userId, dto);
+    return this.ratingService.rateTrip(
+      bookingId,
+      userId,
+      dto,
+    );
   }
 
   // API 1: Full Trip Temperature Analytics
@@ -80,7 +95,10 @@ export class TripsController {
     @Param('bookingId') bookingId: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.analyticsService.getDoorLog(bookingId, userId);
+    return this.analyticsService.getDoorLog(
+      bookingId,
+      userId,
+    );
   }
 
   // API 3: Export Temperature Report PDF
@@ -91,8 +109,6 @@ export class TripsController {
     @CurrentUser('id') userId: string,
     @Res() response: Response,
     @Query('format') format = 'pdf',
-    @Query('includeChart') includeChart = 'true',
-    @Query('includeDoorLog') includeDoorLog = 'true',
   ) {
     if (format !== 'pdf') {
       return response.status(400).json({
@@ -108,6 +124,7 @@ export class TripsController {
     const fileName = `ColdRoute_TempCertificate_${bookingId}.pdf`;
 
     response.setHeader('Content-Type', 'application/pdf');
+
     response.setHeader(
       'Content-Disposition',
       `attachment; filename="${fileName}"`,
@@ -115,4 +132,6 @@ export class TripsController {
 
     return response.send(pdf);
   }
+
+
 }

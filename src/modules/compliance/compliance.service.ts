@@ -12,7 +12,7 @@ export class ComplianceService {
 
     const cleanGstin = gstin.trim().toUpperCase();
 
-    // Standard 15-character GSTIN regex: 2 digits, 5 chars, 4 digits, 1 char, 1 char, Z, 1 char
+    // Standard 15-character GSTIN regex
     const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
     const isValidFormat = gstinRegex.test(cleanGstin);
 
@@ -25,32 +25,39 @@ export class ComplianceService {
       };
     }
 
-    // If a bookingId is provided, associate it with the booking
-    if (bookingId && userId) {
+    // If bookingId is provided, associate consignee_gstin with booking
+    if (bookingId) {
+      // 1. Try updating bookings table
+      try {
+        await this.db.query(
+          `UPDATE bookings
+           SET consignee_gstin = $1, updated_at = NOW()
+           WHERE id::text = $2`,
+          [cleanGstin, bookingId],
+        );
+      } catch (err) {}
+
+      // 2. Try updating booking_quotes table (using user_id or id)
       try {
         await this.db.query(
           `UPDATE booking_quotes
            SET consignee_gstin = $1, updated_at = NOW()
-           WHERE id = $2 AND customer_id = $3`,
-          [cleanGstin, bookingId, userId],
+           WHERE id::text = $2 OR quote_id::text = $2`,
+          [cleanGstin, bookingId],
         );
-      } catch (err) {
-        console.warn('Could not update booking quote with consignee GSTIN:', err.message);
-      }
+      } catch (err) {}
     }
 
-    // Also update the customer profile if user is onboarded
+    // If customer profile exists for this user, link the gstin
     if (userId && !bookingId) {
       try {
         await this.db.query(
           `UPDATE customer_profiles
            SET gstin = $1, updated_at = NOW()
-           WHERE user_id = $2`,
+           WHERE user_id::text = $2`,
           [cleanGstin, userId],
         );
-      } catch (err) {
-        // Ignored if profile not created yet
-      }
+      } catch (err) {}
     }
 
     return {
@@ -77,17 +84,24 @@ export class ComplianceService {
     const ewbRegex = /^\d{12}$/;
     const isValid = ewbRegex.test(cleanEwb);
 
-    if (isValid && bookingId && userId) {
+    if (isValid && bookingId) {
+      try {
+        await this.db.query(
+          `UPDATE bookings
+           SET eway_bill_number = $1, updated_at = NOW()
+           WHERE id::text = $2`,
+          [cleanEwb, bookingId],
+        );
+      } catch (err) {}
+
       try {
         await this.db.query(
           `UPDATE booking_quotes
            SET eway_bill_number = $1, updated_at = NOW()
-           WHERE id = $2 AND customer_id = $3`,
-          [cleanEwb, bookingId, userId],
+           WHERE id::text = $2 OR quote_id::text = $2`,
+          [cleanEwb, bookingId],
         );
-      } catch (err) {
-        console.warn('Could not update booking quote with EWB:', err.message);
-      }
+      } catch (err) {}
     }
 
     return {

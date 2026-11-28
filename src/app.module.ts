@@ -27,6 +27,17 @@ import { PretripModule } from './modules/pretrip/pretrip.module';
 import { PrecoolingModule } from './modules/precooling/precooling.module';
 import { CompartmentModule } from './modules/compartment/compartment.module';
 import { PickupArrivalModule } from './modules/pickup_arrival/pickup_arrival.module';
+import { TripSettlementModule } from './modules/trip_settlement/trip_settlement.module';
+import { StatementsModule } from './modules/statements/statements.module';
+import { VehicleHealthModule } from './modules/vehicle_health/vehicle_health.module';
+import { FleetModule } from './modules/fleet/fleet.module';
+import { DriverProfileModule } from './modules/driver_profile/driver_profile.module';
+import { AdminAuthModule } from './modules/admin_auth/admin_auth.module';
+import { AdminOperationsModule } from './modules/admin_operations/admin_operations.module';
+import { AdminOnboardingModule } from './modules/admin_onboarding/admin_onboarding.module';
+import { AdminQualityModule } from './modules/admin_quality/admin_quality.module';
+import { AdminFinanceModule } from './modules/admin_finance/admin_finance.module';
+import { AdminGovernanceModule } from './modules/admin_governance/admin_governance.module';
 
 @Module({
   imports: [
@@ -61,6 +72,17 @@ import { PickupArrivalModule } from './modules/pickup_arrival/pickup_arrival.mod
     PrecoolingModule,
     CompartmentModule,
     PickupArrivalModule,
+    TripSettlementModule,
+    StatementsModule,
+    VehicleHealthModule,
+    FleetModule,
+    DriverProfileModule,
+    AdminAuthModule,
+    AdminOperationsModule,
+    AdminOnboardingModule,
+    AdminQualityModule,
+    AdminFinanceModule,
+    AdminGovernanceModule,
   ],
 })
 export class AppModule {}
