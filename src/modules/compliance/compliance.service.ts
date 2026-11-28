@@ -1,9 +1,13 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { DatabaseService } from '../../database/database.service';
-
+import { randomInt } from 'crypto';
 @Injectable()
 export class ComplianceService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(private readonly db: DatabaseService) { }
 
   async verifyConsigneeGstin(gstin: string, bookingId?: string, userId?: string) {
     if (!gstin) {
@@ -35,7 +39,7 @@ export class ComplianceService {
            WHERE id::text = $2`,
           [cleanGstin, bookingId],
         );
-      } catch (err) {}
+      } catch (err) { }
 
       // 2. Try updating booking_quotes table (using user_id or id)
       try {
@@ -45,7 +49,7 @@ export class ComplianceService {
            WHERE id::text = $2 OR quote_id::text = $2`,
           [cleanGstin, bookingId],
         );
-      } catch (err) {}
+      } catch (err) { }
     }
 
     // If customer profile exists for this user, link the gstin
@@ -57,7 +61,7 @@ export class ComplianceService {
            WHERE user_id::text = $2`,
           [cleanGstin, userId],
         );
-      } catch (err) {}
+      } catch (err) { }
     }
 
     return {
@@ -92,7 +96,7 @@ export class ComplianceService {
            WHERE id::text = $2`,
           [cleanEwb, bookingId],
         );
-      } catch (err) {}
+      } catch (err) { }
 
       try {
         await this.db.query(
@@ -101,7 +105,7 @@ export class ComplianceService {
            WHERE id::text = $2 OR quote_id::text = $2`,
           [cleanEwb, bookingId],
         );
-      } catch (err) {}
+      } catch (err) { }
     }
 
     return {
@@ -113,5 +117,115 @@ export class ComplianceService {
         : 'E-Way Bill must be a 12-digit number',
       bookingId: bookingId || null,
     };
+  }
+
+  async generateEwayBill(body: any) {
+    const consignorGstin = String(body?.consignorGstin || '').trim().toUpperCase();
+    const consigneeGstin = String(body?.consigneeGstin || '').trim().toUpperCase();
+    const invoiceNumber = String(body?.invoiceNumber || '').trim();
+    const invoiceDate = String(body?.invoiceDate || '').trim();
+    const invoiceValueMinor = Number(body?.invoiceValueMinor);
+    const fromPincode = String(body?.fromPincode || '').trim();
+    const toPincode = String(body?.toPincode || '').trim();
+    const distance = Number(body?.approximateDistanceKm);
+
+    const gstinRegex =
+      /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
+    if (!gstinRegex.test(consignorGstin)) {
+      throw new BadRequestException({
+        code: 'INVALID_CONSIGNOR_GSTIN',
+        message: 'Consignor GSTIN is invalid.',
+      });
+    }
+
+    if (!gstinRegex.test(consigneeGstin)) {
+      throw new BadRequestException({
+        code: 'INVALID_CONSIGNEE_GSTIN',
+        message: 'Consignee GSTIN is invalid.',
+      });
+    }
+
+    if (!invoiceNumber) {
+      throw new BadRequestException({
+        code: 'INVOICE_NUMBER_REQUIRED',
+        message: 'Invoice number is required.',
+      });
+    }
+
+    const date = new Date(`${invoiceDate}T00:00:00.000Z`);
+
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(invoiceDate) ||
+      Number.isNaN(date.getTime()) ||
+      date.toISOString().slice(0, 10) !== invoiceDate
+    ) {
+      throw new BadRequestException({
+        code: 'INVALID_INVOICE_DATE',
+        message: 'Invoice date must use YYYY-MM-DD format.',
+      });
+    }
+
+    if (!Number.isSafeInteger(invoiceValueMinor) || invoiceValueMinor <= 0) {
+      throw new BadRequestException({
+        code: 'INVALID_INVOICE_VALUE',
+        message: 'Invoice value must be a positive integer.',
+      });
+    }
+
+    if (!/^\d{6}$/.test(fromPincode) || !/^\d{6}$/.test(toPincode)) {
+      throw new BadRequestException({
+        code: 'INVALID_PINCODE',
+        message: 'Both pincodes must contain 6 digits.',
+      });
+    }
+
+    if (!Number.isFinite(distance) || distance <= 0) {
+      throw new BadRequestException({
+        code: 'INVALID_DISTANCE',
+        message: 'Approximate distance must be greater than zero.',
+      });
+    }
+
+    // Live E-Way Bill generation requires an authorized GSP.
+    // Do not generate a fake E-Way Bill number.
+    // MOCK E-WAY BILL - DEVELOPMENT / TESTING ONLY
+
+    if (
+      process.env.EWAYBILL_MOCK_MODE === 'true' &&
+      ['development', 'test'].includes(process.env.NODE_ENV || '')
+    ) {
+      const generatedDate = new Date();
+
+      const validUntil = new Date(generatedDate);
+      validUntil.setDate(validUntil.getDate() + 5);
+
+      const mockEwayBillNumber =
+        `53${randomInt(1000000000, 10000000000)}`;
+
+      return {
+        success: true,
+        ewayBillNumber: mockEwayBillNumber,
+        status: 'part_a_generated',
+        isMock: true,
+        provider: 'MOCK',
+        generatedDate: generatedDate.toISOString(),
+        validUpto: validUntil.toISOString(),
+        fromGstin: consignorGstin,
+        toGstin: consigneeGstin,
+        docNumber: invoiceNumber,
+        docDate: invoiceDate,
+        message:
+          'Mock E-Way Bill generated for testing only. Part-B will be attached upon vehicle assignment.',
+      };
+    }
+
+    // Live provider unavailable: return 503.
+
+    throw new ServiceUnavailableException({
+      code: 'EWAYBILL_GSP_NOT_CONFIGURED',
+      message:
+        'Request is valid, but the E-Way Bill generation provider is not configured.',
+    });
   }
 }

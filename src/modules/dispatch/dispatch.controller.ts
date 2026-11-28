@@ -1,11 +1,21 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common';
+
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
+
 import { DispatchService } from './dispatch.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Controller('dispatch')
 export class DispatchController {
-  constructor(private readonly dispatchService: DispatchService) {}
+  constructor(private readonly dispatchService: DispatchService) { }
 
   @UseGuards(JwtAuthGuard)
   @Get(':bookingId/dispatch-status')
@@ -47,3 +57,24 @@ export class DispatchController {
   }
 }
 
+// SCREEN 16 - API 1: Temperature Analytics
+@Controller('trips')
+export class TripAnalyticsController {
+  constructor(private readonly dispatchService: DispatchService) { }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':bookingId/analytics/temperature')
+  async getTemperatureAnalytics(
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string,
+    @Query('resolution') resolution = '15min',
+    @Query('includeHumidity') includeHumidity = 'false',
+  ) {
+    return this.dispatchService.getTemperatureAnalytics(
+      bookingId,
+      userId,
+      resolution,
+      includeHumidity,
+    );
+  }
+}

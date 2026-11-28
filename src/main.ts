@@ -3,7 +3,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import helmet from 'helmet';
-import * as morgan from 'morgan';
+import morgan = require('morgan');
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
