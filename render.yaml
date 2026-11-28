@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: zoopp-backend
+    runtime: node
+    region: singapore
+    plan: free
+    branch: zoop-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://zoop_mcjl_user:SFpUhmH8UPlqaRhfnEBJ7TxjeT73f4oz@dpg-dbq4ii3l550s739i6fd0-a.singapore-postgres.render.com/zoop_mcjl
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
