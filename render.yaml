@@ -5,7 +5,7 @@ services:
     region: singapore
     plan: free
     branch: zoop-backend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm run start:prod
     envVars:
       - key: DATABASE_URL
