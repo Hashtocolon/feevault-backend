@@ -4,7 +4,6 @@ import {
   Get,
   Post,
   Patch,
-  Post,
   Body,
   UseGuards,
   HttpCode,
@@ -104,8 +103,7 @@ export class DriverController {
   }
 
 
-  // 
-==============================================
+  // ==============================================
   // API 6.1: SUBMIT BANK ACCOUNT & UPI DETAILS
   // POST /api/v1/driver/kyc/bank
   // =====================================================

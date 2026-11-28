@@ -299,11 +299,19 @@ export class DriverService {
   // =====================================================
 
   async getComplianceCalendar(userId: string) {
-
     const docs = await this.db.query(
       `SELECT *
        FROM driver_compliance_documents
        WHERE driver_user_id = $1`,
+      [userId],
+    );
+
+    return {
+      isDispatchLocked: false,
+      documentsCount: docs.rows.length,
+      documents: docs.rows,
+    };
+  }
 
   async inspectPartnerRoleSchema() {
     const vehicleColumnsResult = await this.db.query(
